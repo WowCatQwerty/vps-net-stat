@@ -1,0 +1,16 @@
+[Unit]
+Description=netmon — Network & Port Monitor
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/netmon/netmon.py
+Restart=on-failure
+RestartSec=10
+User=root
+StandardOutput=append:/var/log/netmon/netmon.log
+StandardError=append:/var/log/netmon/netmon.log
+
+[Install]
+WantedBy=multi-user.target
