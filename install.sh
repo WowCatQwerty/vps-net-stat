@@ -1,79 +1,110 @@
 #!/bin/bash
-# install.sh — установка netmon
-# Однострочная установка:
-#   curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/netmon/main/install.sh | sudo bash
+# vps-net-stat — installer
+# curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/install.sh | sudo bash
 
 set -e
 
-RED='\033[0;31m'
-GRN='\033[0;32m'
-YLW='\033[1;33m'
-CYN='\033[0;36m'
-NC='\033[0m'
-
+RED='\033[0;31m'; GRN='\033[0;32m'; YLW='\033[1;33m'; CYN='\033[0;36m'; NC='\033[0m'
 ok()  { echo -e "${GRN}✓${NC} $1"; }
 err() { echo -e "${RED}✗ $1${NC}"; exit 1; }
 inf() { echo -e "${YLW}→${NC} $1"; }
 
 REPO="https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main"
-INSTALL_DIR="/opt/netmon"
-DB_DIR="/var/lib/netmon"
-LOG_DIR="/var/log/netmon"
+INSTALL_DIR="/opt/vps-net-stat"
+DB_DIR="/var/lib/vps-net-stat"
+LOG_DIR="/var/log/vps-net-stat"
+CONF_DIR="/etc/vps-net-stat"
+SERVICE_NAME="vps-net-stat"
 
-echo -e "\n${CYN}  netmon — Network & Port Monitor${NC}"
-echo -e "${CYN}  ──────────────────────────────${NC}\n"
+[[ $EUID -ne 0 ]] && err "Run as root: curl ... | sudo bash"
 
-[[ $EUID -ne 0 ]] && err "Запускай от root: curl ... | sudo bash"
+# ── Выбор языка / Language selection ─────────────────────────────────────────
+echo ""
+echo -e "${CYN}  ╔══════════════════════════════════════╗${NC}"
+echo -e "${CYN}  ║       vps-net-stat — installer       ║${NC}"
+echo -e "${CYN}  ╚══════════════════════════════════════╝${NC}"
+echo ""
+echo -e "  Выберите язык / Choose language:\n"
+echo -e "  [1] Русский"
+echo -e "  [2] English"
+echo ""
+read -rp "  → " LANG_CHOICE
 
-# Проверка зависимостей
+if [[ "$LANG_CHOICE" == "2" ]]; then
+    LANG="en"
+    msg_deps="Checking dependencies…"
+    msg_dirs="Creating directories…"
+    msg_download="Downloading files from GitHub…"
+    msg_cmd="Installing vns command…"
+    msg_service="Installing systemd service…"
+    msg_done="vps-net-stat installed successfully!"
+    msg_ifaces="Detected interfaces:"
+    msg_menu="Open menu:"
+    msg_status="Service status:"
+    msg_logs="Logs:"
+else
+    LANG="ru"
+    msg_deps="Проверяю зависимости…"
+    msg_dirs="Создаю директории…"
+    msg_download="Скачиваю файлы из GitHub…"
+    msg_cmd="Устанавливаю команду vns…"
+    msg_service="Устанавливаю systemd-сервис…"
+    msg_done="vps-net-stat успешно установлен!"
+    msg_ifaces="Обнаруженные интерфейсы:"
+    msg_menu="Открыть меню:"
+    msg_status="Статус сервиса:"
+    msg_logs="Логи:"
+fi
+
+echo ""
+
+# ── Зависимости / Dependencies ────────────────────────────────────────────────
+inf "$msg_deps"
 for cmd in python3 ss ip curl; do
-    command -v "$cmd" &>/dev/null || err "Не найдена команда: $cmd  (apt install $cmd)"
+    command -v "$cmd" &>/dev/null || err "Missing: $cmd  (apt install iproute2 curl python3)"
 done
-ok "Зависимости в порядке"
+ok "$msg_deps"
 
-inf "Создаю директории…"
-mkdir -p "$INSTALL_DIR" "$DB_DIR" "$LOG_DIR"
-ok "Директории: $INSTALL_DIR, $DB_DIR, $LOG_DIR"
+# ── Директории ────────────────────────────────────────────────────────────────
+inf "$msg_dirs"
+mkdir -p "$INSTALL_DIR" "$DB_DIR" "$LOG_DIR" "$CONF_DIR"
+ok "$msg_dirs"
 
-inf "Скачиваю файлы из GitHub…"
+# ── Сохраняем язык ────────────────────────────────────────────────────────────
+echo "$LANG" > "$CONF_DIR/lang"
+
+# ── Скачиваем файлы ───────────────────────────────────────────────────────────
+inf "$msg_download"
 curl -fsSL "$REPO/netmon.py"     -o "$INSTALL_DIR/netmon.py"
 curl -fsSL "$REPO/netmon-cli.py" -o "$INSTALL_DIR/netmon-cli.py"
 chmod +x "$INSTALL_DIR/netmon.py" "$INSTALL_DIR/netmon-cli.py"
-ok "Файлы скачаны в $INSTALL_DIR"
+ok "$msg_download"
 
-inf "Устанавливаю команду netmon-cli…"
-ln -sf "$INSTALL_DIR/netmon-cli.py" /usr/local/bin/netmon-cli
-ok "Команда netmon-cli готова"
+# ── Команда vns ───────────────────────────────────────────────────────────────
+inf "$msg_cmd"
+ln -sf "$INSTALL_DIR/netmon-cli.py" /usr/local/bin/vns
+ok "$msg_cmd"
 
-inf "Устанавливаю systemd-сервис…"
-curl -fsSL "$REPO/netmon.service" -o /etc/systemd/system/netmon.service
+# ── Systemd ───────────────────────────────────────────────────────────────────
+inf "$msg_service"
+curl -fsSL "$REPO/netmon.service" -o "/etc/systemd/system/${SERVICE_NAME}.service"
 systemctl daemon-reload
-systemctl enable netmon
-systemctl restart netmon
-ok "Сервис запущен и добавлен в автозагрузку"
+systemctl enable "$SERVICE_NAME"
+systemctl restart "$SERVICE_NAME"
+ok "$msg_service"
 
-# Пауза — дать демону секунду подняться
 sleep 2
 
-# Покажем какие интерфейсы были обнаружены
-IFACES=$(ip route | awk '/^default/ {print $5}' | tr '\n' ' ')
+IFACES=$(ip route 2>/dev/null | awk '/^default/ {print $5}' | tr '\n' ' ')
 
 echo ""
-echo -e "${GRN}══════════════════════════════════════════════${NC}"
-echo -e "${GRN}  netmon успешно установлен!${NC}"
-echo -e "${GRN}══════════════════════════════════════════════${NC}"
+echo -e "${GRN}  ══════════════════════════════════════${NC}"
+echo -e "${GRN}  ✓ ${msg_done}${NC}"
+echo -e "${GRN}  ══════════════════════════════════════${NC}"
 echo ""
-echo -e "  Обнаруженные интерфейсы: ${CYN}${IFACES}${NC}"
+echo -e "  ${msg_ifaces} ${CYN}${IFACES}${NC}"
 echo ""
-echo "  Команды:"
-echo "  netmon-cli summary      — сводка (трафик + порты)"
-echo "  netmon-cli ports        — открытые порты"
-echo "  netmon-cli today        — трафик за сегодня"
-echo "  netmon-cli month        — трафик за месяц"
-echo "  netmon-cli all          — по всем месяцам"
-echo "  netmon-cli days 7       — последние 7 дней"
-echo ""
-echo "  Логи:    tail -f /var/log/netmon/netmon.log"
-echo "  Статус:  systemctl status netmon"
-echo "  База:    /var/lib/netmon/netmon.db"
+echo -e "  ${msg_menu}  ${CYN}vns${NC}"
+echo -e "  ${msg_status} systemctl status ${SERVICE_NAME}"
+echo -e "  ${msg_logs}   tail -f ${LOG_DIR}/daemon.log"
 echo ""
