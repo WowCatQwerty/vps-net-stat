@@ -28,7 +28,7 @@ echo -e "  Выберите язык / Choose language:\n"
 echo -e "  [1] Русский"
 echo -e "  [2] English"
 echo ""
-read -rp "  → " LANG_CHOICE
+read -rp "  → " LANG_CHOICE < /dev/tty
 
 if [[ "$LANG_CHOICE" == "2" ]]; then
     LANG="en"
