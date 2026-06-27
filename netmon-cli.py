@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""
-vps-net-stat CLI — интерактивное меню / direct commands
-Вызов меню:  vns
-Прямые команды: vns summary / ports / today / month / all / days [N] / port-top
-"""
+"""vps-net-stat CLI"""
 
 import sqlite3, sys, os, subprocess
 from datetime import date, datetime
@@ -590,29 +586,9 @@ def interactive_menu():
         else:
             pass  # неверный ввод — просто перерисуем меню
 
-# ── Direct CLI ────────────────────────────────────────────────────────────────
-def direct_cli():
-    cmd  = sys.argv[1]
-    conn = get_db()
-    if   cmd == "summary": cmd_summary(conn)
-    elif cmd == "ports":   cmd_ports(conn)
-    elif cmd == "today":   cmd_today(conn)
-    elif cmd == "month":   cmd_month(conn)
-    elif cmd == "all":     cmd_all(conn)
-    elif cmd == "days":
-        n = int(sys.argv[2]) if len(sys.argv) > 2 else 30
-        cmd_days(conn, n)
-    elif cmd == "port-top": cmd_port_top(conn)
-    else:
-        print(__doc__)
-    conn.close()
-
 # ── Entry point ───────────────────────────────────────────────────────────────
 def main():
-    if len(sys.argv) > 1:
-        direct_cli()
-    else:
-        interactive_menu()
+    interactive_menu()
 
 if __name__ == "__main__":
     main()

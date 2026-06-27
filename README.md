@@ -41,23 +41,14 @@ vns
   [9]   Убрать порт из отслеживания
   [wl]  Список отслеживаемых портов
   ──────────────────────────────────────
-  [10]  Удалить программу
-  [11]  Перезапустить сервис
-  [12]  Переключить язык (Switch to English)
+  [10]  Сбросить трафик сервера
+  [11]  Сбросить трафик порта
+  ──────────────────────────────────────
+  [12]  Удалить программу
   [13]  Обновить vps-net-stat
+  [14]  Перезапустить сервис
+  [15]  Переключить язык (Switch to English)
   [0]   Выйти
-```
-
-### Прямые команды (без меню)
-
-```bash
-vns summary      # сводка: сегодня / месяц / всего + кол-во портов
-vns ports        # открытые порты с именами процессов
-vns today        # трафик за сегодня
-vns month        # трафик за текущий месяц
-vns all          # трафик по каждому месяцу отдельно
-vns days 7       # последние N дней (по умолчанию 30)
-vns port-top     # топ портов по трафику за сегодня
 ```
 
 ---
@@ -65,7 +56,7 @@ vns port-top     # топ портов по трафику за сегодня
 ## Отслеживание трафика по портам
 
 По умолчанию трафик по портам **не считается** — сначала нужно добавить нужные порты вручную.  
-Это сделано специально: зачем собирать лишнее, если интересует только пара сервисов.
+
 
 **Как добавить порт:**
 
@@ -93,9 +84,11 @@ vns port-top     # топ портов по трафику за сегодня
 
 Или вручную:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/netmon.py -o /opt/vps-net-stat/netmon.py
-curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/netmon-cli.py -o /opt/vps-net-stat/netmon-cli.py
-systemctl restart vps-net-stat
+curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/netmon.py      -o /opt/vps-net-stat/netmon.py
+curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/netmon-cli.py  -o /opt/vps-net-stat/netmon-cli.py
+curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/install.sh     -o /opt/vps-net-stat/install.sh
+curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/netmon.service -o /etc/systemd/system/vps-net-stat.service
+systemctl daemon-reload && systemctl restart vps-net-stat
 ```
 
 Данные при обновлении **не удаляются**.
