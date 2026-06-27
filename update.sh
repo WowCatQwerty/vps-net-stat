@@ -26,7 +26,7 @@ curl -fsSL "$REPO/netmon.py"      -o "$TMPDIR/netmon.py"
 curl -fsSL "$REPO/netmon-cli.py"  -o "$TMPDIR/netmon-cli.py"
 curl -fsSL "$REPO/netmon.service" -o "$TMPDIR/netmon.service"
 curl -fsSL "$REPO/version.txt"    -o "$TMPDIR/version.txt"
-NEW_VER=$(curl -fsSL "$REPO/version.txt")
+NEW_VER=$(curl -fsSL "$REPO/version.txt" | tr -d '\n\r')
 curl -fsSL "https://github.com/WowCatQwerty/vps-net-stat/releases/download/v${NEW_VER}/checksums.txt" -o "$TMPDIR/checksums.txt"
 ok "Файлы скачаны"
 
