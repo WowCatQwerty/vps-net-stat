@@ -76,6 +76,14 @@ def init_db(conn):
             process TEXT,
             PRIMARY KEY (ts, proto, port)
         );
+
+        CREATE TABLE IF NOT EXISTS watched_ports (
+            port    INTEGER NOT NULL,
+            proto   TEXT NOT NULL DEFAULT 'tcp',
+            comment TEXT,
+            added   TEXT NOT NULL,
+            PRIMARY KEY (port, proto)
+        );
     """)
     conn.commit()
 
@@ -101,11 +109,20 @@ def read_iface_stats(ifaces):
     return stats
 
 # ── Трафик по портам через ss ─────────────────────────────────────────────────
+def get_watched(conn):
+    """Возвращает set of (port, proto) из watched_ports."""
+    rows = conn.execute("SELECT port, proto FROM watched_ports").fetchall()
+    return {(r["port"], r["proto"]) for r in rows}
+
 def read_port_traffic(conn):
     """
-    Читает статистику трафика по сокетам через ss -tin / ss -uin.
-    Суммирует bytes_sent/bytes_acked per port за сегодня.
+    Читает статистику трафика только по портам из watched_ports.
+    Если список пуст — ничего не считает.
     """
+    watched = get_watched(conn)
+    if not watched:
+        return
+
     day = date.today().isoformat()
     for proto_flag, proto_name in [("-t", "tcp"), ("-u", "udp")]:
         try:
@@ -149,6 +166,8 @@ def read_port_traffic(conn):
                         except Exception:
                             pass
                 if tx_b > 0 or rx_b > 0:
+                    if (port, proto_name) not in watched:
+                        continue
                     conn.execute("""
                         INSERT INTO port_traffic (day, port, proto, process, rx_bytes, tx_bytes)
                         VALUES (?, ?, ?, ?, ?, ?)

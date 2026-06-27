@@ -67,6 +67,22 @@ STRINGS = {
         "restart_done":      "Сервис перезапущен.",
         "lang_switched":     "Язык переключён. Язык / Language: English",
         "press_enter":       "\nНажмите Enter для возврата в меню…",
+        "m_watch_add":  "Добавить порт для отслеживания трафика",
+        "m_watch_del":  "Убрать порт из отслеживания",
+        "m_watch_list": "Отслеживаемые порты",
+        "watch_list_empty": "Нет отслеживаемых портов. Добавь через пункт меню.",
+        "watch_add_prompt": "Номер порта (например 80): ",
+        "watch_proto_prompt": "Протокол [tcp/udp, по умолчанию tcp]: ",
+        "watch_comment_prompt": "Комментарий (необязательно): ",
+        "watch_added": "Порт добавлен в отслеживание.",
+        "watch_already": "Этот порт уже отслеживается.",
+        "watch_del_prompt": "Номер порта для удаления: ",
+        "watch_proto_del_prompt": "Протокол [tcp/udp, по умолчанию tcp]: ",
+        "watch_deleted": "Порт убран из отслеживания.",
+        "watch_not_found": "Порт не найден в списке.",
+        "watch_invalid": "Некорректный номер порта.",
+        "comment_col": "Комментарий",
+        "added_col": "Добавлен",
         "итого":             "Итого",
         "всего":             "Всего",
     },
@@ -116,6 +132,22 @@ STRINGS = {
         "restart_done":      "Service restarted.",
         "lang_switched":     "Language switched. Язык / Language: Русский",
         "press_enter":       "\nPress Enter to return to menu…",
+        "m_watch_add":  "Add port for traffic tracking",
+        "m_watch_del":  "Remove port from tracking",
+        "m_watch_list": "Watched ports",
+        "watch_list_empty": "No watched ports. Add one via menu.",
+        "watch_add_prompt": "Port number (e.g. 80): ",
+        "watch_proto_prompt": "Protocol [tcp/udp, default tcp]: ",
+        "watch_comment_prompt": "Comment (optional): ",
+        "watch_added": "Port added to tracking.",
+        "watch_already": "This port is already being tracked.",
+        "watch_del_prompt": "Port number to remove: ",
+        "watch_proto_del_prompt": "Protocol [tcp/udp, default tcp]: ",
+        "watch_deleted": "Port removed from tracking.",
+        "watch_not_found": "Port not found in list.",
+        "watch_invalid": "Invalid port number.",
+        "comment_col": "Comment",
+        "added_col": "Added",
         "итого":             "Total",
         "всего":             "Grand total",
     },
@@ -287,6 +319,63 @@ def cmd_port_top(conn):
     print_table([T["port_col"], T["proto_col"], T["process_col"], T["incoming"], T["outgoing"], T["total"]], table)
     print()
 
+def cmd_watch_list(conn):
+    print(f"\n  {T['m_watch_list']}\n")
+    rows = conn.execute(
+        "SELECT port, proto, comment, added FROM watched_ports ORDER BY port"
+    ).fetchall()
+    if not rows:
+        print(f"  {T['watch_list_empty']}\n")
+        return
+    table = [(r["port"], r["proto"], r["comment"] or "—", r["added"]) for r in rows]
+    print_table([T["port_col"], T["proto_col"], T["comment_col"], T["added_col"]], table)
+    print()
+
+def cmd_watch_add(conn):
+    raw = input(f"\n  {T['watch_add_prompt']}").strip()
+    try:
+        port = int(raw)
+        if not (1 <= port <= 65535):
+            raise ValueError
+    except ValueError:
+        print(f"  {T['watch_invalid']}\n")
+        return
+    proto_raw = input(f"  {T['watch_proto_prompt']}").strip().lower()
+    proto = proto_raw if proto_raw in ("tcp", "udp") else "tcp"
+    exists = conn.execute(
+        "SELECT 1 FROM watched_ports WHERE port=? AND proto=?", (port, proto)
+    ).fetchone()
+    if exists:
+        print(f"  {T['watch_already']}\n")
+        return
+    comment = input(f"  {T['watch_comment_prompt']}").strip() or None
+    from datetime import date
+    conn.execute(
+        "INSERT INTO watched_ports (port, proto, comment, added) VALUES (?, ?, ?, ?)",
+        (port, proto, comment, date.today().isoformat())
+    )
+    conn.commit()
+    print(f"  {T['watch_added']}\n")
+
+def cmd_watch_del(conn):
+    cmd_watch_list(conn)
+    raw = input(f"  {T['watch_del_prompt']}").strip()
+    try:
+        port = int(raw)
+    except ValueError:
+        print(f"  {T['watch_invalid']}\n")
+        return
+    proto_raw = input(f"  {T['watch_proto_del_prompt']}").strip().lower()
+    proto = proto_raw if proto_raw in ("tcp", "udp") else "tcp"
+    cur = conn.execute(
+        "DELETE FROM watched_ports WHERE port=? AND proto=?", (port, proto)
+    )
+    conn.commit()
+    if cur.rowcount:
+        print(f"  {T['watch_deleted']}\n")
+    else:
+        print(f"  {T['watch_not_found']}\n")
+
 def do_uninstall():
     ans = input(f"\n  {T['uninstall_confirm']}").strip().lower()
     if ans == "y":
@@ -332,9 +421,13 @@ def show_menu():
         ("6", T["m6"]),
         ("7", T["m7"]),
         ("─", None),
-        ("8", T["m8"]),
-        ("9", T["m9"]),
-        ("10",T["m10"]),
+        ("8", T["m_watch_add"]),
+        ("9", T["m_watch_del"]),
+        ("wl",T["m_watch_list"]),
+        ("─", None),
+        ("10", T["m8"]),
+        ("11", T["m9"]),
+        ("12",T["m10"]),
         ("0", T["m0"]),
     ]
     for key, label in items:
@@ -352,13 +445,13 @@ def interactive_menu():
         if choice == "0":
             clear()
             sys.exit(0)
-        elif choice == "10":
+        elif choice == "12":
             switch_lang()
             pause()
             continue
 
         # Команды требующие БД
-        if choice in ("1","2","3","4","5","6","7"):
+        if choice in ("1","2","3","4","5","6","7","wl","8","9"):
             conn = get_db()
             clear()
             if   choice == "1": cmd_summary(conn)
@@ -374,12 +467,15 @@ def interactive_menu():
                     n = 30
                 cmd_days(conn, n)
             elif choice == "7": cmd_port_top(conn)
+            elif choice == "wl": cmd_watch_list(conn)
+            elif choice == "8": cmd_watch_add(conn)
+            elif choice == "9": cmd_watch_del(conn)
             conn.close()
             pause()
-        elif choice == "8":
+        elif choice == "10":
             do_uninstall()
             pause()
-        elif choice == "9":
+        elif choice == "11":
             do_restart()
             pause()
         else:
