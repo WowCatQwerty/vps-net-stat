@@ -952,20 +952,20 @@ def interactive_menu():
         if choice == "0":
             clear()
             sys.exit(0)
-        elif choice == "15":
+        elif choice == "19":
             switch_lang()
             pause()
             continue
 
         # Команды требующие БД
-        if choice in ("1","2","3","4","5","6","7","wl","8","9","10","11"):
+        if choice in ("1","2","3","4","5","6","7","wl","8","9","10","11","12","14","15"):
             conn = get_db()
             clear()
-            if   choice == "1": cmd_summary(conn)
-            elif choice == "2": cmd_ports(conn)
-            elif choice == "3": cmd_today(conn)
-            elif choice == "4": cmd_month(conn)
-            elif choice == "5": cmd_all(conn)
+            if   choice == "1":  cmd_summary(conn)
+            elif choice == "2":  cmd_ports(conn)
+            elif choice == "3":  cmd_today(conn)
+            elif choice == "4":  cmd_month(conn)
+            elif choice == "5":  cmd_all(conn)
             elif choice == "6":
                 try:
                     raw = input(f"  {T['days_prompt']}").strip()
@@ -973,21 +973,27 @@ def interactive_menu():
                 except ValueError:
                     n = 30
                 cmd_days(conn, n)
-            elif choice == "7": cmd_port_top(conn)
+            elif choice == "7":  cmd_port_top(conn)
             elif choice == "wl": cmd_watch_list(conn)
-            elif choice == "8": cmd_watch_add(conn)
-            elif choice == "9": cmd_watch_del(conn)
+            elif choice == "8":  cmd_watch_add(conn)
+            elif choice == "9":  cmd_watch_del(conn)
             elif choice == "10": do_reset_server(conn)
             elif choice == "11": do_reset_port(conn)
+            elif choice == "12": cmd_export(conn)
+            elif choice == "14": cmd_info(conn)
+            elif choice == "15": cmd_doctor(conn)
             conn.close()
             pause()
-        elif choice == "12":
+        elif choice == "13":
+            cmd_set_limit()
+            pause()
+        elif choice == "16":
             do_uninstall()
             pause()
-        elif choice == "13":
+        elif choice == "17":
             do_update()
             pause()
-        elif choice == "14":
+        elif choice == "18":
             do_restart()
             pause()
         else:
