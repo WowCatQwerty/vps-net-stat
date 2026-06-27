@@ -19,10 +19,41 @@ echo -e "\n${CYN}  vps-net-stat — обновление / update${NC}\n"
 [[ ! -d "$INSTALL_DIR" ]] && err "vps-net-stat не установлен. Запусти install.sh"
 
 inf "Скачиваю файлы…"
-curl -fsSL "$REPO/netmon.py"      -o "$INSTALL_DIR/netmon.py"
-curl -fsSL "$REPO/netmon-cli.py"  -o "$INSTALL_DIR/netmon-cli.py"
-curl -fsSL "$REPO/netmon.service" -o "/etc/systemd/system/vps-net-stat.service"
-curl -fsSL "$REPO/version.txt"    -o "$INSTALL_DIR/version.txt"
+TMPDIR=$(mktemp -d)
+trap "rm -rf $TMPDIR" EXIT
+
+curl -fsSL "$REPO/netmon.py"      -o "$TMPDIR/netmon.py"
+curl -fsSL "$REPO/netmon-cli.py"  -o "$TMPDIR/netmon-cli.py"
+curl -fsSL "$REPO/netmon.service" -o "$TMPDIR/netmon.service"
+curl -fsSL "$REPO/version.txt"    -o "$TMPDIR/version.txt"
+ok "Файлы скачаны"
+
+inf "Проверяю целостность файлов (SHA-256)…"
+NEW_VER=$(cat "$TMPDIR/version.txt" | tr -d '\n\r')
+curl -fsSL "https://github.com/WowCatQwerty/vps-net-stat/releases/download/v${NEW_VER}/checksums.txt" -o "$TMPDIR/checksums.txt"
+
+cd "$TMPDIR"
+CHECKSUM_FAIL=0
+while IFS='  ' read -r expected_hash filename; do
+    [[ -f "$filename" ]] || continue
+    actual_hash=$(sha256sum "$filename" | awk '{print $1}')
+    if [[ "$actual_hash" != "$expected_hash" ]]; then
+        echo -e "${RED}✗ Контрольная сумма не совпадает: $filename${NC}"
+        CHECKSUM_FAIL=1
+    fi
+done < checksums.txt
+cd - > /dev/null
+
+if [[ $CHECKSUM_FAIL -eq 1 ]]; then
+    err "Проверка целостности не пройдена. Попробуй снова."
+fi
+ok "Целостность файлов подтверждена"
+
+inf "Устанавливаю файлы…"
+cp "$TMPDIR/netmon.py"      "$INSTALL_DIR/netmon.py"
+cp "$TMPDIR/netmon-cli.py"  "$INSTALL_DIR/netmon-cli.py"
+cp "$TMPDIR/netmon.service" "/etc/systemd/system/vps-net-stat.service"
+cp "$TMPDIR/version.txt"    "$INSTALL_DIR/version.txt"
 chmod +x "$INSTALL_DIR/netmon.py" "$INSTALL_DIR/netmon-cli.py"
 ok "Файлы обновлены"
 
