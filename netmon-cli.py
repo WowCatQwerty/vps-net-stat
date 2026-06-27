@@ -83,6 +83,9 @@ STRINGS = {
         "watch_invalid": "Некорректный номер порта.",
         "comment_col": "Комментарий",
         "added_col": "Добавлен",
+        "period_prompt": "Период: [1] Сегодня  [2] Текущий месяц  [3] Всё время [1]: ",
+        "rx_total": "Входящий всего",
+        "tx_total": "Исходящий всего",
         "m_update": "Обновить vps-net-stat",
         "update_done": "Обновление завершено. Сервис перезапущен.",
         "update_fail": "Ошибка обновления. Проверь подключение к интернету.",
@@ -151,6 +154,9 @@ STRINGS = {
         "watch_invalid": "Invalid port number.",
         "comment_col": "Comment",
         "added_col": "Added",
+        "period_prompt": "Period: [1] Today  [2] This month  [3] All time [1]: ",
+        "rx_total": "Total incoming",
+        "tx_total": "Total outgoing",
         "m_update": "Update vps-net-stat",
         "update_done": "Update complete. Service restarted.",
         "update_fail": "Update failed. Check internet connection.",
@@ -306,20 +312,41 @@ def cmd_days(conn, n=30):
     _print_days(list(reversed(rows)))
 
 def cmd_port_top(conn):
+    period = input(f"\n  {T['period_prompt']}").strip()
     today = date.today().isoformat()
-    print(f"\n  {T['port_top']}\n")
-    rows = conn.execute("""
-        SELECT port, proto, process,
-               SUM(rx_bytes) rx_bytes, SUM(tx_bytes) tx_bytes
-        FROM port_traffic WHERE day=?
-        GROUP BY port, proto
-        ORDER BY (rx_bytes+tx_bytes) DESC
-        LIMIT 20
-    """, (today,)).fetchall()
+    month = date.today().strftime("%Y-%m")
+    if period == "2":
+        where, param, label = "day LIKE ?", f"{month}%", T["month_lbl"]
+    elif period == "3":
+        where, param, label = "1=1", None, T["alltime_lbl"]
+    else:
+        where, param, label = "day = ?", today, T["today_lbl"]
+
+    print(f"\n  {T['port_top']} — {label}\n")
+    if param is not None:
+        rows = conn.execute(f"""
+            SELECT port, proto, process,
+                   SUM(rx_bytes) rx_bytes, SUM(tx_bytes) tx_bytes
+            FROM port_traffic WHERE {where}
+            GROUP BY port, proto
+            ORDER BY (rx_bytes+tx_bytes) DESC
+            LIMIT 20
+        """, (param,)).fetchall()
+    else:
+        rows = conn.execute("""
+            SELECT port, proto, process,
+                   SUM(rx_bytes) rx_bytes, SUM(tx_bytes) tx_bytes
+            FROM port_traffic
+            GROUP BY port, proto
+            ORDER BY (rx_bytes+tx_bytes) DESC
+            LIMIT 20
+        """).fetchall()
     if not rows:
         print(f"  {T['no_data']}\n"); return
     table = [
-        (r["port"], r["proto"], r["process"] or "—", fmt(r["rx_bytes"]), fmt(r["tx_bytes"]), fmt((r["rx_bytes"] or 0)+(r["tx_bytes"] or 0)))
+        (r["port"], r["proto"], r["process"] or "—",
+         fmt(r["rx_bytes"]), fmt(r["tx_bytes"]),
+         fmt((r["rx_bytes"] or 0)+(r["tx_bytes"] or 0)))
         for r in rows
     ]
     print_table([T["port_col"], T["proto_col"], T["process_col"], T["incoming"], T["outgoing"], T["total"]], table)
@@ -333,8 +360,19 @@ def cmd_watch_list(conn):
     if not rows:
         print(f"  {T['watch_list_empty']}\n")
         return
-    table = [(r["port"], r["proto"], r["comment"] or "—", r["added"]) for r in rows]
-    print_table([T["port_col"], T["proto_col"], T["comment_col"], T["added_col"]], table)
+    table = []
+    for r in rows:
+        tr = conn.execute("""
+            SELECT COALESCE(SUM(rx_bytes),0) rx, COALESCE(SUM(tx_bytes),0) tx
+            FROM port_traffic WHERE port=? AND proto=?
+        """, (r["port"], r["proto"])).fetchone()
+        rx, tx = tr["rx"], tr["tx"]
+        table.append((
+            r["port"], r["proto"], r["comment"] or "—", r["added"],
+            fmt(rx), fmt(tx), fmt(rx+tx)
+        ))
+    print_table([T["port_col"], T["proto_col"], T["comment_col"], T["added_col"],
+                 T["incoming"], T["outgoing"], T["total"]], table)
     print()
 
 def cmd_watch_add(conn):
