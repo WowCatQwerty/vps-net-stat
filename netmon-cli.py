@@ -57,7 +57,7 @@ STRINGS = {
         "traffic_month":"Трафик за месяц",
         "traffic_months":"Трафик по месяцам",
         "traffic_days": "Трафик за последние {} дней",
-        "port_top":     "Топ портов по трафику (сегодня)",
+        "port_top":     "Топ портов по трафику",
         "port_col":     "Порт",
         "proto_col":    "Протокол",
         "process_col":  "Процесс",
@@ -83,7 +83,7 @@ STRINGS = {
         "watch_invalid": "Некорректный номер порта.",
         "comment_col": "Комментарий",
         "added_col": "Добавлен",
-        "period_prompt": "Период: [1] Сегодня  [2] Текущий месяц  [3] Всё время [1]: ",
+        "period_prompt": "Период: [1] Сегодня  [2] Текущий месяц  [3] Всё время: ",
         "rx_total": "Входящий всего",
         "tx_total": "Исходящий всего",
         "m_update": "Обновить vps-net-stat",
@@ -128,7 +128,7 @@ STRINGS = {
         "traffic_month":"Traffic for month",
         "traffic_months":"Traffic by month",
         "traffic_days": "Traffic for last {} days",
-        "port_top":     "Top ports by traffic (today)",
+        "port_top":     "Top ports by traffic",
         "port_col":     "Port",
         "proto_col":    "Protocol",
         "process_col":  "Process",
@@ -154,7 +154,7 @@ STRINGS = {
         "watch_invalid": "Invalid port number.",
         "comment_col": "Comment",
         "added_col": "Added",
-        "period_prompt": "Period: [1] Today  [2] This month  [3] All time [1]: ",
+        "period_prompt": "Period: [1] Today  [2] This month  [3] All time: ",
         "rx_total": "Total incoming",
         "tx_total": "Total outgoing",
         "m_update": "Update vps-net-stat",
@@ -322,7 +322,7 @@ def cmd_port_top(conn):
     else:
         where, param, label = "day = ?", today, T["today_lbl"]
 
-    print(f"\n  {T['port_top']} — {label}\n")
+    print(f"\n  {T['port_top'].split(" (")[0]} — {label}\n")
     if param is not None:
         rows = conn.execute(f"""
             SELECT port, proto, process,
