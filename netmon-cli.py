@@ -87,6 +87,13 @@ STRINGS = {
         "rx_total": "Входящий всего",
         "tx_total": "Исходящий всего",
         "m_update": "Обновить vps-net-stat",
+        "m_reset_server": "Сбросить трафик сервера",
+        "m_reset_port": "Сбросить трафик порта",
+        "reset_server_confirm": "Удалить весь трафик сервера? [y/N]: ",
+        "reset_port_confirm": "Удалить трафик порта {}? [y/N]: ",
+        "reset_done": "Трафик удалён.",
+        "reset_abort": "Отмена.",
+        "reset_port_prompt": "Номер порта: ",
         "update_done": "Обновление завершено. Сервис перезапущен.",
         "update_fail": "Ошибка обновления. Проверь подключение к интернету.",
         "итого":             "Итого",
@@ -158,6 +165,13 @@ STRINGS = {
         "rx_total": "Total incoming",
         "tx_total": "Total outgoing",
         "m_update": "Update vps-net-stat",
+        "m_reset_server": "Reset server traffic stats",
+        "m_reset_port": "Reset port traffic stats",
+        "reset_server_confirm": "Delete all server traffic data? [y/N]: ",
+        "reset_port_confirm": "Delete traffic for port {}? [y/N]: ",
+        "reset_done": "Traffic data deleted.",
+        "reset_abort": "Cancelled.",
+        "reset_port_prompt": "Port number: ",
         "update_done": "Update complete. Service restarted.",
         "update_fail": "Update failed. Check internet connection.",
         "итого":             "Total",
@@ -420,6 +434,31 @@ def cmd_watch_del(conn):
     else:
         print(f"  {T['watch_not_found']}\n")
 
+def do_reset_server(conn):
+    ans = input(f"\n  {T['reset_server_confirm']}").strip().lower()
+    if ans == "y":
+        conn.execute("DELETE FROM traffic_daily")
+        conn.commit()
+        print(f"  {T['reset_done']}\n")
+    else:
+        print(f"  {T['reset_abort']}\n")
+
+def do_reset_port(conn):
+    cmd_watch_list(conn)
+    raw = input(f"  {T['reset_port_prompt']}").strip()
+    try:
+        port = int(raw)
+    except ValueError:
+        print(f"  {T['watch_invalid']}\n")
+        return
+    ans = input(f"  {T['reset_port_confirm'].format(port)}").strip().lower()
+    if ans == "y":
+        conn.execute("DELETE FROM port_traffic WHERE port=?", (port,))
+        conn.commit()
+        print(f"  {T['reset_done']}\n")
+    else:
+        print(f"  {T['reset_abort']}\n")
+
 REPO = "https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main"
 INSTALL_DIR = "/opt/vps-net-stat"
 
@@ -474,23 +513,26 @@ def show_menu():
     print(f"  ╚══════════════════════════════════════╝\n")
     print(f"  {T['menu_header']}\n")
     items = [
-        ("1", T["m1"]),
-        ("2", T["m2"]),
-        ("3", T["m3"]),
-        ("4", T["m4"]),
-        ("5", T["m5"]),
-        ("6", T["m6"]),
-        ("7", T["m7"]),
-        ("─", None),
-        ("8", T["m_watch_add"]),
-        ("9", T["m_watch_del"]),
-        ("wl",T["m_watch_list"]),
-        ("─", None),
-        ("10", T["m8"]),
+        ("1",  T["m1"]),
+        ("2",  T["m2"]),
+        ("3",  T["m3"]),
+        ("4",  T["m4"]),
+        ("5",  T["m5"]),
+        ("6",  T["m6"]),
+        ("7",  T["m7"]),
+        ("─",  None),
+        ("8",  T["m_watch_add"]),
+        ("9",  T["m_watch_del"]),
+        ("wl", T["m_watch_list"]),
+        ("─",  None),
+        ("10", T["m_reset_server"]),
+        ("11", T["m_reset_port"]),
+        ("─",  None),
+        ("12", T["m8"]),
         ("13", T["m_update"]),
-        ("11", T["m9"]),
-        ("12",T["m10"]),
-        ("0", T["m0"]),
+        ("14", T["m9"]),
+        ("15", T["m10"]),
+        ("0",  T["m0"]),
     ]
     for key, label in items:
         if key == "─":
@@ -507,13 +549,13 @@ def interactive_menu():
         if choice == "0":
             clear()
             sys.exit(0)
-        elif choice == "12":
+        elif choice == "15":
             switch_lang()
             pause()
             continue
 
         # Команды требующие БД
-        if choice in ("1","2","3","4","5","6","7","wl","8","9"):
+        if choice in ("1","2","3","4","5","6","7","wl","8","9","10","11"):
             conn = get_db()
             clear()
             if   choice == "1": cmd_summary(conn)
@@ -532,15 +574,17 @@ def interactive_menu():
             elif choice == "wl": cmd_watch_list(conn)
             elif choice == "8": cmd_watch_add(conn)
             elif choice == "9": cmd_watch_del(conn)
+            elif choice == "10": do_reset_server(conn)
+            elif choice == "11": do_reset_port(conn)
             conn.close()
             pause()
-        elif choice == "10":
+        elif choice == "12":
             do_uninstall()
             pause()
         elif choice == "13":
             do_update()
             pause()
-        elif choice == "11":
+        elif choice == "14":
             do_restart()
             pause()
         else:
