@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """vps-net-stat CLI"""
 
-import sqlite3, sys, os, subprocess
+import sqlite3, sys, os, subprocess, time
 from datetime import date, datetime
 
 DB_PATH = "/var/lib/vps-net-stat/data.db"
@@ -82,6 +82,54 @@ STRINGS = {
         "watch_invalid": "Некорректный номер порта.",
         "comment_col": "Комментарий",
         "added_col": "Добавлен",
+        "version_cur":  "Версия:",
+        "version_new":  "🟢 Доступна новая версия:",
+        "version_ok":   "Версия актуальна",
+        "svc_running":  "Сервис: запущен",
+        "svc_stopped":  "Сервис: остановлен",
+        "last_scan":    "Последнее сканирование:",
+        "db_size_lbl":  "База данных:",
+        "tracked_lbl":  "Отслеживаемых портов:",
+        "uptime_lbl":   "Время работы сервиса:",
+        "ago":          "назад",
+        "never":        "никогда",
+        "sec":          "сек",
+        "min":          "мин",
+        "hrs":          "ч",
+        "days_ago":     "д",
+        "info_title":   "vps-net-stat — информация",
+        "doctor_title": "vps-net-stat — диагностика",
+        "doc_sqlite":   "SQLite база доступна",
+        "doc_sqlite_bad":"SQLite база повреждена",
+        "doc_svc":      "systemd сервис запущен",
+        "doc_svc_bad":  "systemd сервис не запущен",
+        "doc_proc":     "/proc/net/dev читается",
+        "doc_proc_bad": "/proc/net/dev недоступен",
+        "doc_ss":       "ss установлен",
+        "doc_ss_bad":   "ss не найден (apt install iproute2)",
+        "doc_ip":       "ip установлен",
+        "doc_ip_bad":   "ip не найден (apt install iproute2)",
+        "doc_iface":    "Интерфейс обнаружен:",
+        "doc_iface_bad":"Интерфейс не найден",
+        "doc_write":    "Права на запись в директории данных",
+        "doc_write_bad":"Нет прав на запись в",
+        "doc_disk":     "Свободно на диске:",
+        "doc_disk_bad": "Мало места на диске:",
+        "doc_fresh":    "База обновлялась недавно",
+        "doc_fresh_bad":"База не обновлялась давно — сервис завис?",
+        "doc_all_ok":   "✓ Всё в порядке",
+        "doc_issues":   "Найдены проблемы:",
+        "m_info":       "Информация о системе (vns info)",
+        "m_doctor":     "Диагностика (vns doctor)",
+        "m_export":     "Экспорт статистики",
+        "m_limit":      "Настроить месячный лимит трафика",
+        "export_choose":"Формат: [1] CSV  [2] JSON  [3] Оба: ",
+        "export_path":  "Сохранить в директорию [/root]: ",
+        "export_done":  "Экспорт завершён:",
+        "limit_prompt": "Месячный лимит ГиБ (0 = отключить): ",
+        "limit_set":    "Лимит установлен:",
+        "limit_bar_lbl":"Месячный лимит:",
+        "limit_none":   "Лимит не установлен",
         "period_prompt": "Период: [1] Сегодня  [2] Текущий месяц  [3] Всё время: ",
         "rx_total": "Входящий всего",
         "tx_total": "Исходящий всего",
@@ -163,6 +211,54 @@ STRINGS = {
         "watch_invalid": "Invalid port number.",
         "comment_col": "Comment",
         "added_col": "Added",
+        "version_cur":  "Version:",
+        "version_new":  "🟢 New version available:",
+        "version_ok":   "Version is up to date",
+        "svc_running":  "Service: running",
+        "svc_stopped":  "Service: stopped",
+        "last_scan":    "Last scan:",
+        "db_size_lbl":  "Database:",
+        "tracked_lbl":  "Tracked ports:",
+        "uptime_lbl":   "Service uptime:",
+        "ago":          "ago",
+        "never":        "never",
+        "sec":          "sec",
+        "min":          "min",
+        "hrs":          "h",
+        "days_ago":     "d",
+        "info_title":   "vps-net-stat — info",
+        "doctor_title": "vps-net-stat — doctor",
+        "doc_sqlite":   "SQLite database accessible",
+        "doc_sqlite_bad":"SQLite database corrupted",
+        "doc_svc":      "systemd service running",
+        "doc_svc_bad":  "systemd service not running",
+        "doc_proc":     "/proc/net/dev readable",
+        "doc_proc_bad": "/proc/net/dev not accessible",
+        "doc_ss":       "ss installed",
+        "doc_ss_bad":   "ss not found (apt install iproute2)",
+        "doc_ip":       "ip installed",
+        "doc_ip_bad":   "ip not found (apt install iproute2)",
+        "doc_iface":    "Interface detected:",
+        "doc_iface_bad":"No interface detected",
+        "doc_write":    "Write access to data directory",
+        "doc_write_bad":"No write access to",
+        "doc_disk":     "Free disk space:",
+        "doc_disk_bad": "Low disk space:",
+        "doc_fresh":    "Database updated recently",
+        "doc_fresh_bad":"Database not updated — service hung?",
+        "doc_all_ok":   "✓ Everything looks good",
+        "doc_issues":   "Issues found:",
+        "m_info":       "System info (vns info)",
+        "m_doctor":     "Diagnostics (vns doctor)",
+        "m_export":     "Export statistics",
+        "m_limit":      "Set monthly traffic limit",
+        "export_choose":"Format: [1] CSV  [2] JSON  [3] Both: ",
+        "export_path":  "Save to directory [/root]: ",
+        "export_done":  "Export complete:",
+        "limit_prompt": "Monthly limit GiB (0 = disable): ",
+        "limit_set":    "Limit set:",
+        "limit_bar_lbl":"Monthly limit:",
+        "limit_none":   "No limit set",
         "period_prompt": "Period: [1] Today  [2] This month  [3] All time: ",
         "rx_total": "Total incoming",
         "tx_total": "Total outgoing",
@@ -508,10 +604,270 @@ def switch_lang():
     print(f"\n  {T['lang_switched']}\n")
 
 # ── Интерактивное меню ────────────────────────────────────────────────────────
+
+VERSION = "3.0.0"
+REPO_RAW = "https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main"
+VERSION_URL = f"{REPO_RAW}/version.txt"
+
+# ── Версия и проверка обновлений ─────────────────────────────────────────────
+def get_local_version():
+    try:
+        with open("/opt/vps-net-stat/version.txt") as f:
+            return f.read().strip()
+    except Exception:
+        return VERSION
+
+def check_remote_version():
+    try:
+        import urllib.request
+        with urllib.request.urlopen(VERSION_URL, timeout=3) as r:
+            return r.read().decode().strip()
+    except Exception:
+        return None
+
+# ── Время с последнего скана ─────────────────────────────────────────────────
+def time_ago(ts):
+    if not ts:
+        return T["never"]
+    diff = int(time.time()) - ts
+    if diff < 60:   return f"{diff} {T['sec']} {T['ago']}"
+    if diff < 3600: return f"{diff//60} {T['min']} {T['ago']}"
+    if diff < 86400:return f"{diff//3600} {T['hrs']} {T['ago']}"
+    return f"{diff//86400} {T['days_ago']} {T['ago']}"
+
+def service_uptime():
+    try:
+        out = subprocess.check_output(
+            ["systemctl", "show", "vps-net-stat", "--property=ActiveEnterTimestamp"],
+            text=True
+        ).strip()
+        val = out.split("=", 1)[-1].strip()
+        if not val or val == "n/a":
+            return "—"
+        from datetime import datetime
+        dt = datetime.strptime(val[:19], "%a %Y-%m-%d %H:%M:%S")
+        diff = int(time.time()) - int(dt.timestamp())
+        d, h, m = diff//86400, (diff%86400)//3600, (diff%3600)//60
+        return f"{d}{T['days_ago']} {h}{T['hrs']} {m}{T['min']}"
+    except Exception:
+        return "—"
+
+# ── vns info ─────────────────────────────────────────────────────────────────
+def cmd_info(conn):
+    local_ver = get_local_version()
+    remote_ver = check_remote_version()
+
+    db_size = os.path.getsize(DB_PATH) if os.path.exists(DB_PATH) else 0
+    tracked = conn.execute("SELECT COUNT(*) FROM watched_ports").fetchone()[0]
+    last_ts = conn.execute("SELECT MAX(ts) FROM ports").fetchone()[0]
+
+    try:
+        svc = subprocess.check_output(
+            ["systemctl", "is-active", "vps-net-stat"], text=True
+        ).strip()
+        svc_ok = svc == "active"
+    except Exception:
+        svc_ok = False
+
+    print(f"\n  {T['info_title']}\n")
+    print(f"  {T['version_cur']:<26} {local_ver}")
+    if remote_ver and remote_ver != local_ver:
+        print(f"  {T['version_new']:<26} {remote_ver}")
+    else:
+        print(f"  {T['version_ok']}")
+    print()
+    svc_str = T["svc_running"] if svc_ok else T["svc_stopped"]
+    print(f"  {svc_str}")
+    print(f"  {T['uptime_lbl']:<26} {service_uptime()}")
+    print(f"  {T['last_scan']:<26} {time_ago(last_ts)}")
+    print(f"  {T['db_size_lbl']:<26} {fmt(db_size)}")
+    print(f"  {T['tracked_lbl']:<26} {tracked}")
+    print()
+
+# ── vns doctor ───────────────────────────────────────────────────────────────
+def cmd_doctor(conn):
+    print(f"\n  {T['doctor_title']}\n")
+    issues = []
+
+    def chk(ok, msg_ok, msg_fail):
+        sym = "\033[0;32m✓\033[0m" if ok else "\033[0;31m✗\033[0m"
+        msg = msg_ok if ok else msg_fail
+        print(f"  {sym} {msg}")
+        if not ok:
+            issues.append(msg_fail)
+
+    # systemd
+    try:
+        svc = subprocess.check_output(["systemctl","is-active","vps-net-stat"],text=True).strip()
+        chk(svc=="active", T["doc_svc"], T["doc_svc_bad"])
+    except Exception:
+        chk(False, T["doc_svc"], T["doc_svc_bad"])
+
+    # SQLite
+    try:
+        conn.execute("SELECT 1 FROM traffic_daily LIMIT 1")
+        chk(True, T["doc_sqlite"], T["doc_sqlite_bad"])
+    except Exception:
+        chk(False, T["doc_sqlite"], T["doc_sqlite_bad"])
+
+    # /proc/net/dev
+    chk(os.path.readable("/proc/net/dev") if hasattr(os.path,"readable") else os.access("/proc/net/dev", os.R_OK),
+        T["doc_proc"], T["doc_proc_bad"])
+
+    # ss
+    import shutil
+    chk(shutil.which("ss") is not None, T["doc_ss"], T["doc_ss_bad"])
+
+    # ip
+    chk(shutil.which("ip") is not None, T["doc_ip"], T["doc_ip_bad"])
+
+    # Интерфейс
+    try:
+        out = subprocess.check_output(["ip","route"],text=True)
+        ifaces = [l.split()[l.split().index("dev")+1] for l in out.splitlines() if "default" in l and "dev" in l]
+        chk(bool(ifaces), f"{T['doc_iface']} {', '.join(ifaces)}", T["doc_iface_bad"])
+    except Exception:
+        chk(False, T["doc_iface"], T["doc_iface_bad"])
+
+    # Права на запись
+    chk(os.access("/var/lib/vps-net-stat", os.W_OK),
+        T["doc_write"], f"{T['doc_write_bad']} /var/lib/vps-net-stat")
+
+    # Свободное место
+    try:
+        st = os.statvfs("/var/lib/vps-net-stat")
+        free = st.f_bavail * st.f_frsize
+        ok_disk = free > 100 * 1024 * 1024
+        chk(ok_disk, f"{T['doc_disk']} {fmt(free)}", f"{T['doc_disk_bad']} {fmt(free)}")
+    except Exception:
+        pass
+
+    # Свежесть базы
+    last_ts = conn.execute("SELECT MAX(ts) FROM ports").fetchone()[0]
+    if last_ts:
+        fresh = (time.time() - last_ts) < 600
+        chk(fresh, T["doc_fresh"], T["doc_fresh_bad"])
+
+    print()
+    if not issues:
+        print(f"  {T['doc_all_ok']}\n")
+    else:
+        print(f"  {T['doc_issues']} {len(issues)}\n")
+
+# ── Экспорт ──────────────────────────────────────────────────────────────────
+def cmd_export(conn):
+    fmt_choice = input(f"\n  {T['export_choose']}").strip()
+    path_raw = input(f"  {T['export_path']}").strip()
+    out_dir = path_raw if path_raw else "/root"
+    os.makedirs(out_dir, exist_ok=True)
+
+    do_csv  = fmt_choice in ("1", "3", "")
+    do_json = fmt_choice in ("2", "3")
+
+    rows_traffic = conn.execute(
+        "SELECT day, iface, rx_bytes, tx_bytes FROM traffic_daily ORDER BY day"
+    ).fetchall()
+    rows_ports = conn.execute(
+        "SELECT port, proto, process, day, rx_bytes, tx_bytes FROM port_traffic ORDER BY day"
+    ).fetchall()
+    rows_watched = conn.execute(
+        "SELECT port, proto, comment, added FROM watched_ports"
+    ).fetchall()
+
+    saved = []
+
+    if do_csv:
+        import csv
+        p = os.path.join(out_dir, "vns_traffic.csv")
+        with open(p, "w", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["day","iface","rx_bytes","tx_bytes"])
+            for r in rows_traffic:
+                w.writerow([r["day"],r["iface"],r["rx_bytes"],r["tx_bytes"]])
+        saved.append(p)
+
+        p = os.path.join(out_dir, "vns_port_traffic.csv")
+        with open(p, "w", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["port","proto","process","day","rx_bytes","tx_bytes"])
+            for r in rows_ports:
+                w.writerow([r["port"],r["proto"],r["process"],r["day"],r["rx_bytes"],r["tx_bytes"]])
+        saved.append(p)
+
+        p = os.path.join(out_dir, "vns_watched.csv")
+        with open(p, "w", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["port","proto","comment","added"])
+            for r in rows_watched:
+                w.writerow([r["port"],r["proto"],r["comment"],r["added"]])
+        saved.append(p)
+
+    if do_json:
+        import json
+        data = {
+            "traffic_daily":  [dict(r) for r in rows_traffic],
+            "port_traffic":   [dict(r) for r in rows_ports],
+            "watched_ports":  [dict(r) for r in rows_watched],
+        }
+        p = os.path.join(out_dir, "vns_export.json")
+        with open(p, "w") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        saved.append(p)
+
+    print(f"\n  {T['export_done']}")
+    for s in saved:
+        print(f"    {s}")
+    print()
+
+# ── Месячный лимит ────────────────────────────────────────────────────────────
+LIMIT_FILE = "/etc/vps-net-stat/limit_gib"
+
+def get_limit():
+    try:
+        with open(LIMIT_FILE) as f:
+            v = float(f.read().strip())
+            return v if v > 0 else None
+    except Exception:
+        return None
+
+def cmd_set_limit():
+    current = get_limit()
+    cur_str = f"{current} GiB" if current else T["limit_none"]
+    print(f"\n  {T['limit_bar_lbl']} {cur_str}")
+    raw = input(f"  {T['limit_prompt']}").strip()
+    try:
+        val = float(raw)
+        os.makedirs("/etc/vps-net-stat", exist_ok=True)
+        with open(LIMIT_FILE, "w") as f:
+            f.write(str(val))
+        if val > 0:
+            print(f"  {T['limit_set']} {val} GiB\n")
+        else:
+            print(f"  {T['limit_none']}\n")
+    except ValueError:
+        print(f"  {T['watch_invalid']}\n")
+
+def limit_bar(conn):
+    limit = get_limit()
+    if limit is None:
+        return None
+    month = date.today().strftime("%Y-%m")
+    r = conn.execute(
+        "SELECT COALESCE(SUM(rx_bytes+tx_bytes),0) total FROM traffic_daily WHERE day LIKE ?",
+        (f"{month}%",)
+    ).fetchone()
+    used_gib = r["total"] / (1024**3)
+    pct = min(used_gib / limit, 1.0)
+    bar_len = 20
+    filled = int(pct * bar_len)
+    bar = "█" * filled + "░" * (bar_len - filled)
+    color = "\033[0;31m" if pct > 0.9 else "\033[1;33m" if pct > 0.7 else "\033[0;32m"
+    nc = "\033[0m"
+    return f"  {T['limit_bar_lbl']} {color}{bar}{nc} {used_gib:.1f} / {limit:.0f} GiB ({pct*100:.0f}%)"
+
 def show_menu():
     clear()
 
-    # Размер на диске
     def dir_size(path):
         total = 0
         try:
@@ -528,11 +884,32 @@ def show_menu():
     app_size = dir_size("/opt/vps-net-stat")
     disk_str = f"{fmt(db_size + app_size)}  ({T['disk_db']}: {fmt(db_size)}, {T['disk_app']}: {fmt(app_size)})"
 
+    local_ver   = get_local_version()
+    remote_ver  = check_remote_version()
+    update_line = None
+    if remote_ver and remote_ver != local_ver:
+        update_line = f"  \033[0;32m{T['version_new']} {remote_ver}\033[0m"
+
+    # Лимит (только если установлен — нужна БД)
+    bar_line = None
+    try:
+        conn_tmp = sqlite3.connect(DB_PATH)
+        conn_tmp.row_factory = sqlite3.Row
+        bar_line = limit_bar(conn_tmp)
+        conn_tmp.close()
+    except Exception:
+        pass
+
     print(f"\n  ╔══════════════════════════════════════╗")
     print(f"  ║  {T['title']:<36}║")
     print(f"  ╚══════════════════════════════════════╝")
-    print(f"  {T['disk_usage']} {disk_str}\n")
-    print(f"  {T['menu_header']}\n")
+    print(f"  {T['version_cur']} {local_ver}")
+    if update_line:
+        print(update_line)
+    print(f"  {T['disk_usage']} {disk_str}")
+    if bar_line:
+        print(bar_line)
+    print(f"\n  {T['menu_header']}\n")
     items = [
         ("1",  T["m1"]),
         ("2",  T["m2"]),
@@ -548,11 +925,16 @@ def show_menu():
         ("─",  None),
         ("10", T["m_reset_server"]),
         ("11", T["m_reset_port"]),
+        ("12", T["m_export"]),
+        ("13", T["m_limit"]),
         ("─",  None),
-        ("12", T["m8"]),
-        ("13", T["m_update"]),
-        ("14", T["m9"]),
-        ("15", T["m10"]),
+        ("14", T["m_info"]),
+        ("15", T["m_doctor"]),
+        ("─",  None),
+        ("16", T["m8"]),
+        ("17", T["m_update"]),
+        ("18", T["m9"]),
+        ("19", T["m10"]),
         ("0",  T["m0"]),
     ]
     for key, label in items:

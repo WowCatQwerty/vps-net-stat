@@ -28,6 +28,7 @@ vns
   ╔══════════════════════════════════════╗
   ║  vps-net-stat — Мониторинг сети VPS ║
   ╚══════════════════════════════════════╝
+  Размер на диске: 2.34 MiB  (база: 1.80 MiB, программа: 540.00 KiB)
 
   [1]   Сводка (сегодня / месяц / всего)
   [2]   Открытые порты с процессами
@@ -43,11 +44,16 @@ vns
   ──────────────────────────────────────
   [10]  Сбросить трафик сервера
   [11]  Сбросить трафик порта
+  [12]  Экспорт статистики (CSV / JSON)
+  [13]  Настроить месячный лимит трафика
   ──────────────────────────────────────
-  [12]  Удалить программу
-  [13]  Обновить vps-net-stat
-  [14]  Перезапустить сервис
-  [15]  Переключить язык (Switch to English)
+  [14]  Информация о системе
+  [15]  Диагностика
+  ──────────────────────────────────────
+  [16]  Удалить программу
+  [17]  Обновить vps-net-stat
+  [18]  Перезапустить сервис
+  [19]  Переключить язык (Switch to English)
   [0]   Выйти
 ```
 
@@ -57,6 +63,17 @@ vns
 
 По умолчанию трафик по портам **не считается** — сначала нужно добавить нужные порты вручную.  
 
+
+> **Примечание о точности:** общий трафик сервера (`/proc/net/dev`) считается точно.
+> Трафик по отдельным портам — приблизительный: демон использует `ss`, который показывает
+> моментальный срез состояния сокетов. Короткие сессии (< 60 сек) могут не попасть в статистику.
+> Для абсолютной точности по портам нужен iptables/nftables — это отдельная тема.
+
+**Частота проверки по умолчанию:**
+- Общий трафик сервера — каждые **60 секунд**
+- Сканирование портов и трафик по портам — каждые **300 секунд** (5 минут)
+
+Изменить можно в `/opt/vps-net-stat/netmon.py` — переменные `INTERVAL` и `PORT_INTERVAL` в начале файла.
 
 **Как добавить порт:**
 
@@ -80,17 +97,15 @@ vns
 
 ## Обновление
 
-Прямо из меню: `vns` → пункт `[13]`
+Прямо из меню: `vns` → пункт `[17]`
 
-Или вручную:
+Или одной командой:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/netmon.py      -o /opt/vps-net-stat/netmon.py
-curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/netmon-cli.py  -o /opt/vps-net-stat/netmon-cli.py
-curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/install.sh     -o /opt/vps-net-stat/install.sh
-curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/netmon.service -o /etc/systemd/system/vps-net-stat.service
-systemctl daemon-reload && systemctl restart vps-net-stat
+curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/update.sh | sudo bash
 ```
 
+Перед заменой файлов автоматически проверяется SHA-256 контрольная сумма.  
+Если файл скачался повреждённым — установка прервётся с ошибкой.  
 Данные при обновлении **не удаляются**.
 
 ---
@@ -121,21 +136,62 @@ tail -f /var/log/vps-net-stat/daemon.log
 
 ## Удаление
 
-Через меню: `vns` → пункт `[12]`
+Через меню: `vns` → пункт `[16]`
 
-Или вручную:
+Или одной командой:
 ```bash
-systemctl stop vps-net-stat && systemctl disable vps-net-stat
-rm -rf /opt/vps-net-stat /var/lib/vps-net-stat /var/log/vps-net-stat /etc/vps-net-stat
-rm -f /etc/systemd/system/vps-net-stat.service /usr/local/bin/vns
-systemctl daemon-reload
+curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/uninstall.sh | sudo bash
+```
+
+---
+
+## Безопасность
+
+При установке и обновлении автоматически проверяется SHA-256 контрольная сумма каждого файла.  
+Хэши хранятся в [`checksums.txt`](checksums.txt) и генерируются при каждом релизе.
+
+Проверить вручную:
+```bash
+sha256sum /opt/vps-net-stat/netmon.py
+sha256sum /opt/vps-net-stat/netmon-cli.py
+```
+Сравни с содержимым `checksums.txt` в репозитории.
+
+---
+
+## Архитектура
+
+```
+  systemd (автозапуск)
+        │
+        ▼
+   netmon.py (демон)
+      /        \
+     ▼          ▼
+/proc/net/dev   ss (порты)
+     │          │
+     └────┬─────┘
+          ▼
+       SQLite
+    (/var/lib/vps-net-stat/data.db)
+          │
+          ▼
+   netmon-cli.py (vns)
+   интерактивное меню
 ```
 
 ---
 
 ## Требования
 
-- Ubuntu 20.04+ (или любой Linux с systemd)
+**Поддерживаемые ОС:**
+- Ubuntu 20.04+
+- Debian 10+
+- CentOS / RHEL 8+
+- Fedora 33+
+- Любой Linux с systemd и Python 3.8+
+
+**Зависимости:**
 - Python 3.8+
 - `iproute2` (пакет `ss`, `ip` — обычно уже есть)
 

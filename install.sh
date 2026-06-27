@@ -18,12 +18,22 @@ SERVICE_NAME="vps-net-stat"
 
 [[ $EUID -ne 0 ]] && err "Run as root: curl ... | sudo bash"
 
-# ── Выбор языка / Language selection ─────────────────────────────────────────
-echo ""
-echo -e "${CYN}  ╔══════════════════════════════════════╗${NC}"
+echo -e "\n${CYN}  ╔══════════════════════════════════════╗${NC}"
 echo -e "${CYN}  ║       vps-net-stat — installer       ║${NC}"
-echo -e "${CYN}  ╚══════════════════════════════════════╝${NC}"
-echo ""
+echo -e "${CYN}  ╚══════════════════════════════════════╝${NC}\n"
+
+# ── Определяем ОС ─────────────────────────────────────────────────────────────
+if command -v apt-get &>/dev/null; then
+    PKG_MANAGER="apt"
+elif command -v dnf &>/dev/null; then
+    PKG_MANAGER="dnf"
+elif command -v yum &>/dev/null; then
+    PKG_MANAGER="yum"
+else
+    PKG_MANAGER="unknown"
+fi
+
+# ── Выбор языка ───────────────────────────────────────────────────────────────
 echo -e "  Выберите язык / Choose language:\n"
 echo -e "  [1] Русский"
 echo -e "  [2] English"
@@ -33,6 +43,7 @@ read -rp "  → " LANG_CHOICE < /dev/tty
 if [[ "$LANG_CHOICE" == "2" ]]; then
     LANG="en"
     msg_deps="Checking dependencies…"
+    msg_install_deps="Installing missing dependencies…"
     msg_dirs="Creating directories…"
     msg_download="Downloading files from GitHub…"
     msg_cmd="Installing vns command…"
@@ -42,9 +53,12 @@ if [[ "$LANG_CHOICE" == "2" ]]; then
     msg_menu="Open menu:"
     msg_status="Service status:"
     msg_logs="Logs:"
+    msg_update="Update:"
+    msg_uninstall="Uninstall:"
 else
     LANG="ru"
     msg_deps="Проверяю зависимости…"
+    msg_install_deps="Устанавливаю недостающие пакеты…"
     msg_dirs="Создаю директории…"
     msg_download="Скачиваю файлы из GitHub…"
     msg_cmd="Устанавливаю команду vns…"
@@ -54,15 +68,31 @@ else
     msg_menu="Открыть меню:"
     msg_status="Статус сервиса:"
     msg_logs="Логи:"
+    msg_update="Обновление:"
+    msg_uninstall="Удаление:"
 fi
 
 echo ""
 
-# ── Зависимости / Dependencies ────────────────────────────────────────────────
+# ── Зависимости ───────────────────────────────────────────────────────────────
 inf "$msg_deps"
+MISSING=()
 for cmd in python3 ss ip curl; do
-    command -v "$cmd" &>/dev/null || err "Missing: $cmd  (apt install iproute2 curl python3)"
+    command -v "$cmd" &>/dev/null || MISSING+=("$cmd")
 done
+
+if [[ ${#MISSING[@]} -gt 0 ]]; then
+    inf "$msg_install_deps (${MISSING[*]})"
+    if [[ "$PKG_MANAGER" == "apt" ]]; then
+        apt-get install -y python3 iproute2 curl 2>/dev/null
+    elif [[ "$PKG_MANAGER" == "dnf" ]]; then
+        dnf install -y python3 iproute curl 2>/dev/null
+    elif [[ "$PKG_MANAGER" == "yum" ]]; then
+        yum install -y python3 iproute curl 2>/dev/null
+    else
+        err "Установи вручную: ${MISSING[*]}"
+    fi
+fi
 ok "$msg_deps"
 
 # ── Директории ────────────────────────────────────────────────────────────────
@@ -70,22 +100,49 @@ inf "$msg_dirs"
 mkdir -p "$INSTALL_DIR" "$DB_DIR" "$LOG_DIR" "$CONF_DIR"
 ok "$msg_dirs"
 
-# ── Сохраняем язык ────────────────────────────────────────────────────────────
 echo "$LANG" > "$CONF_DIR/lang"
 
-# ── Скачиваем файлы ───────────────────────────────────────────────────────────
+# ── Файлы ─────────────────────────────────────────────────────────────────────
 inf "$msg_download"
-curl -fsSL "$REPO/netmon.py"     -o "$INSTALL_DIR/netmon.py"
-curl -fsSL "$REPO/netmon-cli.py" -o "$INSTALL_DIR/netmon-cli.py"
-chmod +x "$INSTALL_DIR/netmon.py" "$INSTALL_DIR/netmon-cli.py"
+TMPDIR_INS=$(mktemp -d)
+trap "rm -rf $TMPDIR_INS" EXIT
+
+curl -fsSL "$REPO/netmon.py"     -o "$TMPDIR_INS/netmon.py"
+curl -fsSL "$REPO/netmon-cli.py" -o "$TMPDIR_INS/netmon-cli.py"
+curl -fsSL "$REPO/version.txt"   -o "$TMPDIR_INS/version.txt"
+curl -fsSL "https://github.com/WowCatQwerty/vps-net-stat/releases/latest/download/checksums.txt" -o "$TMPDIR_INS/checksums.txt"
 ok "$msg_download"
 
-# ── Команда vns ───────────────────────────────────────────────────────────────
+if [[ "$LANG_CHOICE" == "2" ]]; then
+    inf "Verifying file integrity (SHA-256)…"
+else
+    inf "Проверяю целостность файлов (SHA-256)…"
+fi
+cd "$TMPDIR_INS"
+CHECKSUM_FAIL=0
+while IFS='  ' read -r expected_hash filename; do
+    [[ -f "$filename" ]] || continue
+    actual_hash=$(sha256sum "$filename" | awk '{print $1}')
+    if [[ "$actual_hash" != "$expected_hash" ]]; then
+        CHECKSUM_FAIL=1
+    fi
+done < checksums.txt
+cd - > /dev/null
+
+if [[ $CHECKSUM_FAIL -eq 1 ]]; then
+    err "Integrity check failed. Files may be corrupted. Try again."
+fi
+ok "SHA-256 OK"
+
+cp "$TMPDIR_INS/netmon.py"     "$INSTALL_DIR/netmon.py"
+cp "$TMPDIR_INS/netmon-cli.py" "$INSTALL_DIR/netmon-cli.py"
+cp "$TMPDIR_INS/version.txt"   "$INSTALL_DIR/version.txt"
+chmod +x "$INSTALL_DIR/netmon.py" "$INSTALL_DIR/netmon-cli.py"
+
 inf "$msg_cmd"
 ln -sf "$INSTALL_DIR/netmon-cli.py" /usr/local/bin/vns
 ok "$msg_cmd"
 
-# ── Systemd ───────────────────────────────────────────────────────────────────
 inf "$msg_service"
 curl -fsSL "$REPO/netmon.service" -o "/etc/systemd/system/${SERVICE_NAME}.service"
 systemctl daemon-reload
@@ -104,7 +161,10 @@ echo -e "${GRN}  ═════════════════════
 echo ""
 echo -e "  ${msg_ifaces} ${CYN}${IFACES}${NC}"
 echo ""
-echo -e "  ${msg_menu}  ${CYN}vns${NC}"
-echo -e "  ${msg_status} systemctl status ${SERVICE_NAME}"
-echo -e "  ${msg_logs}   tail -f ${LOG_DIR}/daemon.log"
+echo -e "  ${msg_menu}    ${CYN}vns${NC}"
+echo -e "  ${msg_status}  systemctl status ${SERVICE_NAME}"
+echo -e "  ${msg_logs}    tail -f ${LOG_DIR}/daemon.log"
+echo ""
+echo -e "  ${msg_update}     curl -fsSL ${REPO}/update.sh | sudo bash"
+echo -e "  ${msg_uninstall}  curl -fsSL ${REPO}/uninstall.sh | sudo bash"
 echo ""
