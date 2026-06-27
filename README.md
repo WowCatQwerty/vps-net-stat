@@ -100,7 +100,7 @@ systemctl daemon-reload && systemctl restart vps-net-stat
 | Компонент | Описание |
 |---|---|
 | `netmon.py` | Демон — читает `/proc/net/dev`, считает дельты трафика, сканирует порты через `ss` |
-| `netmon-cli.py` | CLI с интерактивным меню и прямыми командами |
+| `netmon-cli.py` | CLI с интерактивным меню |
 | `netmon.service` | systemd-юнит, автозапуск после перезагрузки |
 | `/var/lib/vps-net-stat/data.db` | SQLite-база, данные копятся бесконечно |
 | `/var/log/vps-net-stat/daemon.log` | Лог демона |
@@ -121,7 +121,7 @@ tail -f /var/log/vps-net-stat/daemon.log
 
 ## Удаление
 
-Через меню: `vns` → пункт `[10]`
+Через меню: `vns` → пункт `[12]`
 
 Или вручную:
 ```bash
