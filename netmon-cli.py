@@ -46,6 +46,9 @@ STRINGS = {
         "month_lbl":    "Месяц",
         "alltime_lbl":  "Всё время",
         "open_ports":   "Открытых портов:",
+        "disk_usage":   "Размер на диске:",
+        "disk_db":      "база",
+        "disk_app":     "программа",
         "summary_title":"vps-net-stat — сводка",
         "day_col":      "День",
         "month_col":    "Месяц",
@@ -124,6 +127,9 @@ STRINGS = {
         "month_lbl":    "Month",
         "alltime_lbl":  "All time",
         "open_ports":   "Open ports:",
+        "disk_usage":   "Disk usage:",
+        "disk_db":      "database",
+        "disk_app":     "app",
         "summary_title":"vps-net-stat — summary",
         "day_col":      "Day",
         "month_col":    "Month",
@@ -246,7 +252,7 @@ def cmd_summary(conn):
     print(f"  │ {T['alltime_lbl']:<12} │ {fmt(rx_a):<13} │ {fmt(tx_a):<14} │")
     print(f"  └{'─'*14}┴{'─'*15}┴{'─'*16}┘")
     print(f"  {T['open_ports']} {port_cnt}")
-    print()
+
 
 def cmd_ports(conn):
     ts = conn.execute("SELECT MAX(ts) FROM ports").fetchone()[0]
@@ -504,9 +510,28 @@ def switch_lang():
 # ── Интерактивное меню ────────────────────────────────────────────────────────
 def show_menu():
     clear()
+
+    # Размер на диске
+    def dir_size(path):
+        total = 0
+        try:
+            for entry in os.scandir(path):
+                if entry.is_file(follow_symlinks=False):
+                    total += entry.stat().st_size
+                elif entry.is_dir(follow_symlinks=False):
+                    total += dir_size(entry.path)
+        except Exception:
+            pass
+        return total
+
+    db_size  = os.path.getsize(DB_PATH) if os.path.exists(DB_PATH) else 0
+    app_size = dir_size("/opt/vps-net-stat")
+    disk_str = f"{fmt(db_size + app_size)}  ({T['disk_db']}: {fmt(db_size)}, {T['disk_app']}: {fmt(app_size)})"
+
     print(f"\n  ╔══════════════════════════════════════╗")
     print(f"  ║  {T['title']:<36}║")
-    print(f"  ╚══════════════════════════════════════╝\n")
+    print(f"  ╚══════════════════════════════════════╝")
+    print(f"  {T['disk_usage']} {disk_str}\n")
     print(f"  {T['menu_header']}\n")
     items = [
         ("1",  T["m1"]),
