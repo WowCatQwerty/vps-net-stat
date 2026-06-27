@@ -83,6 +83,9 @@ STRINGS = {
         "watch_invalid": "Некорректный номер порта.",
         "comment_col": "Комментарий",
         "added_col": "Добавлен",
+        "m_update": "Обновить vps-net-stat",
+        "update_done": "Обновление завершено. Сервис перезапущен.",
+        "update_fail": "Ошибка обновления. Проверь подключение к интернету.",
         "итого":             "Итого",
         "всего":             "Всего",
     },
@@ -148,6 +151,9 @@ STRINGS = {
         "watch_invalid": "Invalid port number.",
         "comment_col": "Comment",
         "added_col": "Added",
+        "m_update": "Update vps-net-stat",
+        "update_done": "Update complete. Service restarted.",
+        "update_fail": "Update failed. Check internet connection.",
         "итого":             "Total",
         "всего":             "Grand total",
     },
@@ -376,6 +382,23 @@ def cmd_watch_del(conn):
     else:
         print(f"  {T['watch_not_found']}\n")
 
+REPO = "https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main"
+INSTALL_DIR = "/opt/vps-net-stat"
+
+def do_update():
+    import urllib.request
+    files = ["netmon.py", "netmon-cli.py"]
+    try:
+        for fname in files:
+            url = f"{REPO}/{fname}"
+            dest = f"{INSTALL_DIR}/{fname}"
+            urllib.request.urlretrieve(url, dest)
+            os.chmod(dest, 0o755)
+        subprocess.run(["systemctl", "restart", "vps-net-stat"], check=False)
+        print(f"\n  {T['update_done']}\n")
+    except Exception as e:
+        print(f"\n  {T['update_fail']} ({e})\n")
+
 def do_uninstall():
     ans = input(f"\n  {T['uninstall_confirm']}").strip().lower()
     if ans == "y":
@@ -426,6 +449,7 @@ def show_menu():
         ("wl",T["m_watch_list"]),
         ("─", None),
         ("10", T["m8"]),
+        ("13", T["m_update"]),
         ("11", T["m9"]),
         ("12",T["m10"]),
         ("0", T["m0"]),
@@ -474,6 +498,9 @@ def interactive_menu():
             pause()
         elif choice == "10":
             do_uninstall()
+            pause()
+        elif choice == "13":
+            do_update()
             pause()
         elif choice == "11":
             do_restart()
