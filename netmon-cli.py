@@ -332,7 +332,7 @@ def cmd_port_top(conn):
     else:
         where, param, label = "day = ?", today, T["today_lbl"]
 
-    print(f"\n  {T['port_top'].split(" (")[0]} — {label}\n")
+    print(f"\n  {T['port_top']} — {label}\n")
     if param is not None:
         rows = conn.execute(f"""
             SELECT port, proto, process,
