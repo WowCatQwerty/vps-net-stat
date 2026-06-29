@@ -148,14 +148,14 @@ curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/unin
 ## Безопасность
 
 При установке и обновлении автоматически проверяется SHA-256 контрольная сумма каждого файла.  
-Хэши хранятся в [`checksums.txt`](checksums.txt) и генерируются при каждом релизе.
+Хэши хранятся в `checksums.txt` и прикладываются к каждому релизу в разделе Assets.
 
 Проверить вручную:
 ```bash
 sha256sum /opt/vps-net-stat/netmon.py
 sha256sum /opt/vps-net-stat/netmon-cli.py
 ```
-Сравни с содержимым `checksums.txt` в репозитории.
+Сравни с `checksums.txt` из Assets нужного релиза на GitHub.
 
 ---
 

@@ -130,6 +130,12 @@ STRINGS = {
         "limit_set":    "Лимит установлен:",
         "limit_bar_lbl":"Месячный лимит:",
         "limit_none":   "Лимит не установлен",
+        "m_charts":     "Графики трафика",
+        "chart_title":  "Трафик за последние {} дней",
+        "chart_rx":     "↓ Входящий",
+        "chart_tx":     "↑ Исходящий",
+        "chart_empty":  "Нет данных для графика",
+        "chart_prompt": "Период: [1] 7 дней  [2] 14 дней  [3] 30 дней [1]: ",
         "period_prompt": "Период: [1] Сегодня  [2] Текущий месяц  [3] Всё время: ",
         "rx_total": "Входящий всего",
         "tx_total": "Исходящий всего",
@@ -259,6 +265,12 @@ STRINGS = {
         "limit_set":    "Limit set:",
         "limit_bar_lbl":"Monthly limit:",
         "limit_none":   "No limit set",
+        "m_charts":     "Traffic charts",
+        "chart_title":  "Traffic for last {} days",
+        "chart_rx":     "↓ Incoming",
+        "chart_tx":     "↑ Outgoing",
+        "chart_empty":  "No data for chart",
+        "chart_prompt": "Period: [1] 7 days  [2] 14 days  [3] 30 days [1]: ",
         "period_prompt": "Period: [1] Today  [2] This month  [3] All time: ",
         "rx_total": "Total incoming",
         "tx_total": "Total outgoing",
@@ -819,6 +831,57 @@ def cmd_export(conn):
         print(f"    {s}")
     print()
 
+
+# ── Графики ───────────────────────────────────────────────────────────────────
+def cmd_charts(conn):
+    choice = input(f"\n  {T['chart_prompt']}").strip()
+    days = 14 if choice == "2" else 30 if choice == "3" else 7
+
+    rows = conn.execute("""
+        SELECT day, SUM(rx_bytes) rx, SUM(tx_bytes) tx
+        FROM traffic_daily
+        GROUP BY day
+        ORDER BY day DESC
+        LIMIT ?
+    """, (days,)).fetchall()
+    rows = list(reversed(rows))
+
+    if not rows:
+        print(f"\n  {T['chart_empty']}\n")
+        return
+
+    print(f"\n  {T['chart_title'].format(days)}\n")
+
+    max_val = max((r["rx"] + r["tx"]) for r in rows) or 1
+    bar_width = 30
+
+    GRN = "\033[0;32m"
+    CYN = "\033[0;36m"
+    NC  = "\033[0m"
+
+    for r in rows:
+        day   = r["day"][5:]  # MM-DD
+        rx, tx = r["rx"], r["tx"]
+        total  = rx + tx
+
+        rx_len = int(rx / max_val * bar_width)
+        tx_len = int(tx / max_val * bar_width)
+
+        rx_bar = GRN + "█" * rx_len + NC
+        tx_bar = CYN + "█" * tx_len + NC
+
+        print(f"  {day}  {rx_bar}{tx_bar}  {fmt(total)}")
+
+    print()
+    # Легенда
+    print(f"  \033[0;32m█\033[0m {T['chart_rx']}   \033[0;36m█\033[0m {T['chart_tx']}")
+
+    # Итого
+    total_rx = sum(r["rx"] for r in rows)
+    total_tx = sum(r["tx"] for r in rows)
+    print(f"\n  {T['итого']}: {fmt(total_rx + total_tx)}  ({T['chart_rx']}: {fmt(total_rx)}, {T['chart_tx']}: {fmt(total_tx)})")
+    print()
+
 # ── Месячный лимит ────────────────────────────────────────────────────────────
 LIMIT_FILE = "/etc/vps-net-stat/limit_gib"
 
@@ -918,6 +981,7 @@ def show_menu():
         ("5",  T["m5"]),
         ("6",  T["m6"]),
         ("7",  T["m7"]),
+        ("gc", T["m_charts"]),
         ("─",  None),
         ("8",  T["m_watch_add"]),
         ("9",  T["m_watch_del"]),
@@ -958,7 +1022,7 @@ def interactive_menu():
             continue
 
         # Команды требующие БД
-        if choice in ("1","2","3","4","5","6","7","wl","8","9","10","11","12","14","15"):
+        if choice in ("1","2","3","4","5","6","7","gc","wl","8","9","10","11","12","14","15"):
             conn = get_db()
             clear()
             if   choice == "1":  cmd_summary(conn)
@@ -974,6 +1038,7 @@ def interactive_menu():
                     n = 30
                 cmd_days(conn, n)
             elif choice == "7":  cmd_port_top(conn)
+            elif choice == "gc": cmd_charts(conn)
             elif choice == "wl": cmd_watch_list(conn)
             elif choice == "8":  cmd_watch_add(conn)
             elif choice == "9":  cmd_watch_del(conn)

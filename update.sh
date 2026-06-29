@@ -18,6 +18,17 @@ echo -e "\n${CYN}  vps-net-stat — обновление / update${NC}\n"
 
 [[ ! -d "$INSTALL_DIR" ]] && err "vps-net-stat не установлен. Запусти install.sh"
 
+# Проверяем версии
+CURRENT_VER=$(cat "$INSTALL_DIR/version.txt" 2>/dev/null | tr -d '\n\r' || echo "unknown")
+REMOTE_VER=$(curl -fsSL "$REPO/version.txt" | tr -d '\n\r')
+
+if [[ "$CURRENT_VER" == "$REMOTE_VER" ]]; then
+    echo -e "  ${GRN}✓ Версия ${CURRENT_VER} уже актуальна. Обновление не требуется.${NC}\n"
+    exit 0
+fi
+
+echo -e "  ${YLW}Обновление: ${CURRENT_VER} → ${REMOTE_VER}${NC}\n"
+
 inf "Скачиваю файлы…"
 TMPDIR=$(mktemp -d)
 trap "rm -rf $TMPDIR" EXIT
