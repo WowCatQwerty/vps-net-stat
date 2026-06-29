@@ -119,8 +119,8 @@ STRINGS = {
         "doc_fresh_bad":"База не обновлялась давно — сервис завис?",
         "doc_all_ok":   "✓ Всё в порядке",
         "doc_issues":   "Найдены проблемы:",
-        "m_info":       "Информация о системе (vns info)",
-        "m_doctor":     "Диагностика (vns doctor)",
+        "m_info":       "Информация о системе",
+        "m_doctor":     "Диагностика",
         "m_export":     "Экспорт статистики",
         "m_limit":      "Настроить месячный лимит трафика",
         "export_choose":"Формат: [1] CSV  [2] JSON  [3] Оба: ",
@@ -254,8 +254,8 @@ STRINGS = {
         "doc_fresh_bad":"Database not updated — service hung?",
         "doc_all_ok":   "✓ Everything looks good",
         "doc_issues":   "Issues found:",
-        "m_info":       "System info (vns info)",
-        "m_doctor":     "Diagnostics (vns doctor)",
+        "m_info":       "System info",
+        "m_doctor":     "Diagnostics",
         "m_export":     "Export statistics",
         "m_limit":      "Set monthly traffic limit",
         "export_choose":"Format: [1] CSV  [2] JSON  [3] Both: ",
@@ -347,20 +347,16 @@ def cmd_summary(conn):
     rx_a, tx_a = r["rx"], r["tx"]
     port_cnt = conn.execute("SELECT COUNT(DISTINCT port) FROM ports WHERE ts=(SELECT MAX(ts) FROM ports)").fetchone()[0]
 
-    col1, col2, col3 = 14, 15, 16
     tit = T["summary_title"]
-    total_w = col1 + col2 + col3 + 6  # внутренняя ширина таблицы
-    tit_w = max(len(tit) + 4, total_w)
-    print()
-    print(f"  ┌{'─'*tit_w}┐")
-    print(f"  │  {tit:<{tit_w-4}}  │")
-    print(f"  ├{'─'*col1}┬{'─'*col2}┬{'─'*col3}┤")
-    print(f"  │ {T['period']:<{col1-2}} │ {T['incoming']:<{col2-2}} │ {T['outgoing']:<{col3-2}} │")
-    print(f"  ├{'─'*col1}┼{'─'*col2}┼{'─'*col3}┤")
-    print(f"  │ {T['today_lbl']:<{col1-2}} │ {fmt(rx_d):<{col2-2}} │ {fmt(tx_d):<{col3-2}} │")
-    print(f"  │ {T['month_lbl']:<{col1-2}} │ {fmt(rx_m):<{col2-2}} │ {fmt(tx_m):<{col3-2}} │")
-    print(f"  │ {T['alltime_lbl']:<{col1-2}} │ {fmt(rx_a):<{col2-2}} │ {fmt(tx_a):<{col3-2}} │")
-    print(f"  └{'─'*col1}┴{'─'*col2}┴{'─'*col3}┘")
+    print(f"\n  {tit}")
+    print_table(
+        [T["period"], T["incoming"], T["outgoing"]],
+        [
+            (T["today_lbl"],   fmt(rx_d), fmt(tx_d)),
+            (T["month_lbl"],   fmt(rx_m), fmt(tx_m)),
+            (T["alltime_lbl"], fmt(rx_a), fmt(tx_a)),
+        ]
+    )
     print(f"  {T['open_ports']} {port_cnt}")
 
 
@@ -510,22 +506,32 @@ def cmd_watch_add(conn):
     except ValueError:
         print(f"  {T['watch_invalid']}\n")
         return
-    proto_raw = input(f"  Протокол: [1] tcp  [2] udp [1]: ").strip()
-    proto = "udp" if proto_raw == "2" else "tcp"
-    exists = conn.execute(
-        "SELECT 1 FROM watched_ports WHERE port=? AND proto=?", (port, proto)
-    ).fetchone()
-    if exists:
-        print(f"  {T['watch_already']}\n")
-        return
+    print(f"  Протокол: [1] tcp  [2] udp  [3] оба")
+    proto_raw = input(f"  → ").strip()
+    if proto_raw == "2":
+        protos = ["udp"]
+    elif proto_raw == "3":
+        protos = ["tcp", "udp"]
+    else:
+        protos = ["tcp"]
     comment = input(f"  {T['watch_comment_prompt']}").strip() or None
     from datetime import date
-    conn.execute(
-        "INSERT INTO watched_ports (port, proto, comment, added) VALUES (?, ?, ?, ?)",
-        (port, proto, comment, date.today().isoformat())
-    )
+    added = 0
+    for proto in protos:
+        exists = conn.execute(
+            "SELECT 1 FROM watched_ports WHERE port=? AND proto=?", (port, proto)
+        ).fetchone()
+        if not exists:
+            conn.execute(
+                "INSERT INTO watched_ports (port, proto, comment, added) VALUES (?, ?, ?, ?)",
+                (port, proto, comment, date.today().isoformat())
+            )
+            added += 1
     conn.commit()
-    print(f"  {T['watch_added']}\n")
+    if added:
+        print(f"  {T['watch_added']}\n")
+    else:
+        print(f"  {T['watch_already']}\n")
 
 def cmd_watch_del(conn):
     cmd_watch_list(conn)
@@ -575,16 +581,17 @@ REPO = "https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main"
 INSTALL_DIR = "/opt/vps-net-stat"
 
 def do_update():
-    import urllib.request
-    files = ["netmon.py", "netmon-cli.py"]
     try:
-        for fname in files:
-            url = f"{REPO}/{fname}"
-            dest = f"{INSTALL_DIR}/{fname}"
-            urllib.request.urlretrieve(url, dest)
-            os.chmod(dest, 0o755)
-        subprocess.run(["systemctl", "restart", "vps-net-stat"], check=False)
-        print(f"\n  {T['update_done']}\n")
+        update_script = f"{INSTALL_DIR}/update.sh"
+        # Скачиваем свежий update.sh
+        subprocess.run([
+            "curl", "-fsSL",
+            f"{REPO_RAW}/update.sh",
+            "-o", update_script
+        ], check=True)
+        os.chmod(update_script, 0o755)
+        # Запускаем — прогресс виден прямо в терминале
+        subprocess.run(["bash", update_script], check=False)
     except Exception as e:
         print(f"\n  {T['update_fail']} ({e})\n")
 
@@ -619,7 +626,7 @@ def switch_lang():
 
 # ── Интерактивное меню ────────────────────────────────────────────────────────
 
-VERSION = "3.2.0"
+VERSION = "3.4.0"
 REPO_RAW = "https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main"
 VERSION_URL = f"{REPO_RAW}/version.txt"
 
@@ -993,22 +1000,22 @@ def show_menu():
         ("5",  T["m7"]),
         ("6",  T["m_charts"]),
         ("─",  None),
-        ("11", T["m_watch_add"]),
-        ("12", T["m_watch_del"]),
-        ("10", T["m_watch_list"]),
+        ("7",  T["m_watch_add"]),
+        ("8",  T["m_watch_del"]),
+        ("9",  T["m_watch_list"]),
         ("─",  None),
-        ("13", T["m_reset_server"]),
-        ("14", T["m_reset_port"]),
-        ("15", T["m_export"]),
-        ("16", T["m_limit"]),
+        ("10", T["m_reset_server"]),
+        ("11", T["m_reset_port"]),
+        ("12", T["m_export"]),
+        ("13", T["m_limit"]),
         ("─",  None),
-        ("17", T["m_info"]),
-        ("18", T["m_doctor"]),
+        ("14", T["m_info"]),
+        ("15", T["m_doctor"]),
         ("─",  None),
-        ("19", T["m8"]),
-        ("20", T["m_update"]),
-        ("21", T["m9"]),
-        ("22", T["m10"]),
+        ("16", T["m8"]),
+        ("17", T["m_update"]),
+        ("18", T["m9"]),
+        ("19", T["m10"]),
         ("0",  T["m0"]),
     ]
     for key, label in items:
@@ -1026,13 +1033,13 @@ def interactive_menu():
         if choice == "0":
             clear()
             sys.exit(0)
-        elif choice == "22":
+        elif choice == "19":
             switch_lang()
             pause()
             continue
 
         # Команды требующие БД
-        if choice in ("1","2","3","4","5","6","10","11","12","13","14","15","17","18"):
+        if choice in ("1","2","3","4","5","6","7","8","9","10","11","12","14","15"):
             conn = get_db()
             clear()
             if   choice == "1":  cmd_summary(conn)
@@ -1047,28 +1054,26 @@ def interactive_menu():
                 cmd_days(conn, n)
             elif choice == "5":  cmd_port_top(conn)
             elif choice == "6":  cmd_charts(conn)
-            elif choice == "10": cmd_watch_list(conn)
-            elif choice == "11": cmd_watch_add(conn)
-            elif choice == "12": cmd_watch_del(conn)
-            elif choice == "13": do_reset_server(conn)
-            elif choice == "14": do_reset_port(conn)
-            elif choice == "15": cmd_export(conn)
-            elif choice == "17": cmd_info(conn)
-            elif choice == "18": cmd_doctor(conn)
+            elif choice == "7":  cmd_watch_add(conn)
+            elif choice == "8":  cmd_watch_del(conn)
+            elif choice == "9":  cmd_watch_list(conn)
+            elif choice == "10": do_reset_server(conn)
+            elif choice == "11": do_reset_port(conn)
+            elif choice == "12": cmd_export(conn)
+            elif choice == "14": cmd_info(conn)
+            elif choice == "15": cmd_doctor(conn)
             conn.close()
             pause()
-        elif choice == "9":
-            pass  # разделитель, игнорируем
-        elif choice == "16":
+        elif choice == "13":
             cmd_set_limit()
             pause()
-        elif choice == "19":
+        elif choice == "16":
             do_uninstall()
             pause()
-        elif choice == "20":
+        elif choice == "17":
             do_update()
             pause()
-        elif choice == "21":
+        elif choice == "18":
             do_restart()
             pause()
         else:

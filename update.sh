@@ -29,19 +29,27 @@ fi
 
 echo -e "  ${YLW}Обновление: ${CURRENT_VER} → ${REMOTE_VER}${NC}\n"
 
-inf "Скачиваю файлы…"
 TMPDIR=$(mktemp -d)
 trap "rm -rf $TMPDIR" EXIT
 
-curl -fsSL "$REPO/netmon.py"      -o "$TMPDIR/netmon.py"
-curl -fsSL "$REPO/netmon-cli.py"  -o "$TMPDIR/netmon-cli.py"
-curl -fsSL "$REPO/netmon.service" -o "$TMPDIR/netmon.service"
-curl -fsSL "$REPO/version.txt"    -o "$TMPDIR/version.txt"
+echo -e "  ${YLW}→${NC} netmon.py"
+curl -f#L "$REPO/netmon.py"      -o "$TMPDIR/netmon.py"
+
+echo -e "  ${YLW}→${NC} netmon-cli.py"
+curl -f#L "$REPO/netmon-cli.py"  -o "$TMPDIR/netmon-cli.py"
+
+echo -e "  ${YLW}→${NC} netmon.service"
+curl -f#L "$REPO/netmon.service" -o "$TMPDIR/netmon.service"
+
+echo -e "  ${YLW}→${NC} version.txt"
+curl -fsSL "$REPO/version.txt"   -o "$TMPDIR/version.txt"
+
 ok "Файлы скачаны"
 
 inf "Проверяю целостность файлов (SHA-256)…"
 NEW_VER=$(cat "$TMPDIR/version.txt" | tr -d '\n\r')
-curl -fsSL "https://github.com/WowCatQwerty/vps-net-stat/releases/download/v${NEW_VER}/checksums.txt" -o "$TMPDIR/checksums.txt"
+echo -e "  ${YLW}→${NC} checksums.txt"
+curl -f#L "https://github.com/WowCatQwerty/vps-net-stat/releases/download/v${NEW_VER}/checksums.txt" -o "$TMPDIR/checksums.txt"
 
 cd "$TMPDIR"
 CHECKSUM_FAIL=0
