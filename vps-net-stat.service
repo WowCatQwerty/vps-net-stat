@@ -1,0 +1,16 @@
+[Unit]
+Description=vps-net-stat — VPS Network & Port Statistics
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/vps-net-stat/vps-net-stat.py
+Restart=on-failure
+RestartSec=10
+User=root
+StandardOutput=append:/var/log/vps-net-stat/daemon.log
+StandardError=append:/var/log/vps-net-stat/daemon.log
+
+[Install]
+WantedBy=multi-user.target

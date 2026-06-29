@@ -107,8 +107,8 @@ inf "$msg_download"
 TMPDIR_INS=$(mktemp -d)
 trap "rm -rf $TMPDIR_INS" EXIT
 
-curl -fsSL "$REPO/netmon.py"     -o "$TMPDIR_INS/netmon.py"
-curl -fsSL "$REPO/netmon-cli.py" -o "$TMPDIR_INS/netmon-cli.py"
+curl -fsSL "$REPO/vps-net-stat.py"     -o "$TMPDIR_INS/vps-net-stat.py"
+curl -fsSL "$REPO/vns.py" -o "$TMPDIR_INS/vns.py"
 curl -fsSL "$REPO/version.txt"   -o "$TMPDIR_INS/version.txt"
 curl -fsSL "https://github.com/WowCatQwerty/vps-net-stat/releases/latest/download/checksums.txt" -o "$TMPDIR_INS/checksums.txt"
 ok "$msg_download"
@@ -134,17 +134,17 @@ if [[ $CHECKSUM_FAIL -eq 1 ]]; then
 fi
 ok "SHA-256 OK"
 
-cp "$TMPDIR_INS/netmon.py"     "$INSTALL_DIR/netmon.py"
-cp "$TMPDIR_INS/netmon-cli.py" "$INSTALL_DIR/netmon-cli.py"
+cp "$TMPDIR_INS/vps-net-stat.py"     "$INSTALL_DIR/vps-net-stat.py"
+cp "$TMPDIR_INS/vns.py" "$INSTALL_DIR/vns.py"
 cp "$TMPDIR_INS/version.txt"   "$INSTALL_DIR/version.txt"
-chmod +x "$INSTALL_DIR/netmon.py" "$INSTALL_DIR/netmon-cli.py"
+chmod +x "$INSTALL_DIR/vps-net-stat.py" "$INSTALL_DIR/vns.py"
 
 inf "$msg_cmd"
-ln -sf "$INSTALL_DIR/netmon-cli.py" /usr/local/bin/vns
+ln -sf "$INSTALL_DIR/vns.py" /usr/local/bin/vns
 ok "$msg_cmd"
 
 inf "$msg_service"
-curl -fsSL "$REPO/netmon.service" -o "/etc/systemd/system/${SERVICE_NAME}.service"
+curl -fsSL "$REPO/vps-net-stat.service" -o "/etc/systemd/system/${SERVICE_NAME}.service"
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME"
 systemctl restart "$SERVICE_NAME"

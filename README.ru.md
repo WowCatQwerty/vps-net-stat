@@ -8,7 +8,7 @@
 Считает входящий/исходящий трафик по дням и месяцам, отслеживает открытые порты с именами процессов, считает трафик по выбранным портам. Данные хранятся в SQLite и **переживают перезагрузки**.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-3.4.1-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
+[![Version](https://img.shields.io/badge/version-3.5.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
 
 </div>
 
@@ -211,9 +211,9 @@ sha256sum /opt/vps-net-stat/netmon-cli.py
 
 | Компонент | Описание |
 |---|---|
-| `netmon.py` | Демон — читает `/proc/net/dev`, считает дельты трафика, сканирует порты через `ss` |
-| `netmon-cli.py` | CLI с интерактивным меню |
-| `netmon.service` | systemd-юнит, автозапуск после перезагрузки |
+| `vps-net-stat.py` | Демон — читает `/proc/net/dev`, считает дельты трафика, сканирует порты через `ss` |
+| `vns.py` | CLI с интерактивным меню |
+| `vps-net-stat.service` | systemd-юнит, автозапуск после перезагрузки |
 | `/var/lib/vps-net-stat/data.db` | SQLite-база, данные копятся бесконечно |
 | `/var/log/vps-net-stat/daemon.log` | Лог демона |
 | `/etc/vps-net-stat/lang` | Выбранный язык интерфейса |

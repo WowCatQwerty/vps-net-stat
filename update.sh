@@ -32,14 +32,14 @@ echo -e "  ${YLW}Обновление: ${CURRENT_VER} → ${REMOTE_VER}${NC}\n"
 TMPDIR=$(mktemp -d)
 trap "rm -rf $TMPDIR" EXIT
 
-echo -e "  ${YLW}→${NC} netmon.py"
-curl -f#L "$REPO/netmon.py"      -o "$TMPDIR/netmon.py"
+echo -e "  ${YLW}→${NC} vps-net-stat.py"
+curl -f#L "$REPO/vps-net-stat.py"      -o "$TMPDIR/vps-net-stat.py"
 
-echo -e "  ${YLW}→${NC} netmon-cli.py"
-curl -f#L "$REPO/netmon-cli.py"  -o "$TMPDIR/netmon-cli.py"
+echo -e "  ${YLW}→${NC} vns.py"
+curl -f#L "$REPO/vns.py"  -o "$TMPDIR/vns.py"
 
-echo -e "  ${YLW}→${NC} netmon.service"
-curl -f#L "$REPO/netmon.service" -o "$TMPDIR/netmon.service"
+echo -e "  ${YLW}→${NC} vps-net-stat.service"
+curl -f#L "$REPO/vps-net-stat.service" -o "$TMPDIR/vps-net-stat.service"
 
 echo -e "  ${YLW}→${NC} version.txt"
 curl -fsSL "$REPO/version.txt"   -o "$TMPDIR/version.txt"
@@ -69,11 +69,11 @@ fi
 ok "Целостность файлов подтверждена"
 
 inf "Устанавливаю файлы…"
-cp "$TMPDIR/netmon.py"      "$INSTALL_DIR/netmon.py"
-cp "$TMPDIR/netmon-cli.py"  "$INSTALL_DIR/netmon-cli.py"
-cp "$TMPDIR/netmon.service" "/etc/systemd/system/vps-net-stat.service"
+cp "$TMPDIR/vps-net-stat.py"      "$INSTALL_DIR/vps-net-stat.py"
+cp "$TMPDIR/vns.py"  "$INSTALL_DIR/vns.py"
+cp "$TMPDIR/vps-net-stat.service" "/etc/systemd/system/vps-net-stat.service"
 cp "$TMPDIR/version.txt"    "$INSTALL_DIR/version.txt"
-chmod +x "$INSTALL_DIR/netmon.py" "$INSTALL_DIR/netmon-cli.py"
+chmod +x "$INSTALL_DIR/vps-net-stat.py" "$INSTALL_DIR/vns.py"
 ok "Файлы обновлены"
 
 inf "Перезапускаю сервис…"

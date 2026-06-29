@@ -8,7 +8,7 @@ Simple network traffic and port monitor for Linux servers.
 Tracks incoming/outgoing traffic by day and month, monitors open ports with process names, counts traffic per port. Data is stored in SQLite and **survives reboots**.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-3.4.1-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
+[![Version](https://img.shields.io/badge/version-3.5.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
 
 </div>
 
@@ -211,9 +211,9 @@ Compare with `checksums.txt` from the release Assets.
 
 | Component | Description |
 |---|---|
-| `netmon.py` | Daemon — reads `/proc/net/dev`, tracks traffic deltas, scans ports via `ss` |
-| `netmon-cli.py` | CLI with interactive menu |
-| `netmon.service` | systemd unit, auto-starts after reboot |
+| `vps-net-stat.py` | Daemon — reads `/proc/net/dev`, tracks traffic deltas, scans ports via `ss` |
+| `vns.py` | CLI with interactive menu |
+| `vps-net-stat.service` | systemd unit, auto-starts after reboot |
 | `/var/lib/vps-net-stat/data.db` | SQLite database, accumulates indefinitely |
 | `/var/log/vps-net-stat/daemon.log` | Daemon log |
 | `/etc/vps-net-stat/lang` | Selected UI language |
