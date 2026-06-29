@@ -626,7 +626,7 @@ def switch_lang():
 
 # ── Интерактивное меню ────────────────────────────────────────────────────────
 
-VERSION = "3.3.0"
+VERSION = "3.4.0"
 REPO_RAW = "https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main"
 VERSION_URL = f"{REPO_RAW}/version.txt"
 
@@ -709,7 +709,6 @@ def cmd_info(conn):
     ))
     print(f"  {T['uptime_lbl']:<26} {service_uptime()}")
     print(f"  {T['last_scan']:<26} {time_ago(last_ts)}")
-    print(f"  {T['db_size_lbl']:<26} {fmt(db_size)}")
     print(f"  {T['tracked_lbl']:<26} {tracked}")
     print()
 
