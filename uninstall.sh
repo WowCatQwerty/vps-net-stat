@@ -9,8 +9,8 @@ err() { echo -e "${RED}✗ $1${NC}"; exit 1; }
 [[ $EUID -ne 0 ]] && err "Run as root: curl ... | sudo bash"
 
 echo -e "\n${CYN}  vps-net-stat — удаление / uninstall${NC}\n"
-echo -e "  ${RED}Все данные и статистика будут удалены безвозвратно.${NC}"
-echo -e "  All data and statistics will be permanently deleted.\n"
+echo -e "  ${RED}Программа и все настройки будут удалены.${NC}"
+echo -e "  The program and all settings will be removed.\n"
 read -rp "  Продолжить? / Continue? [y/N]: " ans < /dev/tty
 
 if [[ "${ans,,}" != "y" ]]; then
@@ -18,13 +18,27 @@ if [[ "${ans,,}" != "y" ]]; then
     exit 0
 fi
 
+# Отдельный вопрос про базу данных
+echo ""
+echo -e "  ${YLW}База данных содержит всю статистику трафика.${NC}"
+echo -e "  ${YLW}Database contains all traffic statistics.${NC}\n"
+read -rp "  Удалить базу данных? / Delete database? [y/N]: " del_db < /dev/tty
+
 echo ""
 systemctl stop vps-net-stat    2>/dev/null && ok "Сервис остановлен"
 systemctl disable vps-net-stat 2>/dev/null && ok "Автозапуск отключён"
 
-for path in /opt/vps-net-stat /var/lib/vps-net-stat /var/log/vps-net-stat /etc/vps-net-stat; do
+# Удаляем программу
+for path in /opt/vps-net-stat /var/log/vps-net-stat /etc/vps-net-stat; do
     rm -rf "$path" && ok "Удалено: $path"
 done
+
+# База данных — только если согласился
+if [[ "${del_db,,}" == "y" ]]; then
+    rm -rf /var/lib/vps-net-stat && ok "Удалено: /var/lib/vps-net-stat (база данных)"
+else
+    ok "База данных сохранена: /var/lib/vps-net-stat"
+fi
 
 rm -f /etc/systemd/system/vps-net-stat.service && ok "Удалён systemd-юнит"
 rm -f /usr/local/bin/vns && ok "Удалена команда vns"
