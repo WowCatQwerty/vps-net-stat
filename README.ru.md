@@ -2,13 +2,13 @@
 
 # vps-net-stat
 
-[🇬🇧 English](README.md) | **🇷🇺 Русский**
+[English](README.md) | **Русский**
 
 Простой монитор трафика и портов для Linux-серверов.  
 Считает входящий/исходящий трафик по дням и месяцам, отслеживает открытые порты с именами процессов, считает трафик по выбранным портам. Данные хранятся в SQLite и **переживают перезагрузки**.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-3.3.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
+[![Version](https://img.shields.io/badge/version-3.4.1-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
 
 </div>
 
