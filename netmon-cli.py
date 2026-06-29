@@ -124,7 +124,7 @@ STRINGS = {
         "m_export":     "Экспорт статистики",
         "m_limit":      "Настроить месячный лимит трафика",
         "export_choose":"Формат: [1] CSV  [2] JSON  [3] Оба: ",
-        "export_path":  "Сохранить в директорию [/root]: ",
+        "export_path":  "Сохранить в директорию [/root/vns-backup]: ",
         "export_done":  "Экспорт завершён:",
         "limit_prompt": "Месячный лимит ГиБ (0 = отключить): ",
         "limit_set":    "Лимит установлен:",
@@ -259,7 +259,7 @@ STRINGS = {
         "m_export":     "Export statistics",
         "m_limit":      "Set monthly traffic limit",
         "export_choose":"Format: [1] CSV  [2] JSON  [3] Both: ",
-        "export_path":  "Save to directory [/root]: ",
+        "export_path":  "Save to directory [/root/vns-backup]: ",
         "export_done":  "Export complete:",
         "limit_prompt": "Monthly limit GiB (0 = disable): ",
         "limit_set":    "Limit set:",
@@ -347,18 +347,20 @@ def cmd_summary(conn):
     rx_a, tx_a = r["rx"], r["tx"]
     port_cnt = conn.execute("SELECT COUNT(DISTINCT port) FROM ports WHERE ts=(SELECT MAX(ts) FROM ports)").fetchone()[0]
 
+    col1, col2, col3 = 14, 15, 16
     tit = T["summary_title"]
-    w = len(tit) + 4
+    total_w = col1 + col2 + col3 + 6  # внутренняя ширина таблицы
+    tit_w = max(len(tit) + 4, total_w)
     print()
-    print(f"  ┌{'─'*w}┐")
-    print(f"  │  {tit}  │")
-    print(f"  ├{'─'*14}┬{'─'*15}┬{'─'*16}┤")
-    print(f"  │ {T['period']:<12} │ {T['incoming']:<13} │ {T['outgoing']:<14} │")
-    print(f"  ├{'─'*14}┼{'─'*15}┼{'─'*16}┤")
-    print(f"  │ {T['today_lbl']:<12} │ {fmt(rx_d):<13} │ {fmt(tx_d):<14} │")
-    print(f"  │ {T['month_lbl']:<12} │ {fmt(rx_m):<13} │ {fmt(tx_m):<14} │")
-    print(f"  │ {T['alltime_lbl']:<12} │ {fmt(rx_a):<13} │ {fmt(tx_a):<14} │")
-    print(f"  └{'─'*14}┴{'─'*15}┴{'─'*16}┘")
+    print(f"  ┌{'─'*tit_w}┐")
+    print(f"  │  {tit:<{tit_w-4}}  │")
+    print(f"  ├{'─'*col1}┬{'─'*col2}┬{'─'*col3}┤")
+    print(f"  │ {T['period']:<{col1-2}} │ {T['incoming']:<{col2-2}} │ {T['outgoing']:<{col3-2}} │")
+    print(f"  ├{'─'*col1}┼{'─'*col2}┼{'─'*col3}┤")
+    print(f"  │ {T['today_lbl']:<{col1-2}} │ {fmt(rx_d):<{col2-2}} │ {fmt(tx_d):<{col3-2}} │")
+    print(f"  │ {T['month_lbl']:<{col1-2}} │ {fmt(rx_m):<{col2-2}} │ {fmt(tx_m):<{col3-2}} │")
+    print(f"  │ {T['alltime_lbl']:<{col1-2}} │ {fmt(rx_a):<{col2-2}} │ {fmt(tx_a):<{col3-2}} │")
+    print(f"  └{'─'*col1}┴{'─'*col2}┴{'─'*col3}┘")
     print(f"  {T['open_ports']} {port_cnt}")
 
 
@@ -508,8 +510,8 @@ def cmd_watch_add(conn):
     except ValueError:
         print(f"  {T['watch_invalid']}\n")
         return
-    proto_raw = input(f"  {T['watch_proto_prompt']}").strip().lower()
-    proto = proto_raw if proto_raw in ("tcp", "udp") else "tcp"
+    proto_raw = input(f"  Протокол: [1] tcp  [2] udp [1]: ").strip()
+    proto = "udp" if proto_raw == "2" else "tcp"
     exists = conn.execute(
         "SELECT 1 FROM watched_ports WHERE port=? AND proto=?", (port, proto)
     ).fetchone()
@@ -533,8 +535,8 @@ def cmd_watch_del(conn):
     except ValueError:
         print(f"  {T['watch_invalid']}\n")
         return
-    proto_raw = input(f"  {T['watch_proto_del_prompt']}").strip().lower()
-    proto = proto_raw if proto_raw in ("tcp", "udp") else "tcp"
+    proto_raw = input(f"  Протокол: [1] tcp  [2] udp [1]: ").strip()
+    proto = "udp" if proto_raw == "2" else "tcp"
     cur = conn.execute(
         "DELETE FROM watched_ports WHERE port=? AND proto=?", (port, proto)
     )
@@ -617,7 +619,7 @@ def switch_lang():
 
 # ── Интерактивное меню ────────────────────────────────────────────────────────
 
-VERSION = "3.1.0"
+VERSION = "3.2.0"
 REPO_RAW = "https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main"
 VERSION_URL = f"{REPO_RAW}/version.txt"
 
@@ -650,15 +652,23 @@ def time_ago(ts):
 def service_uptime():
     try:
         out = subprocess.check_output(
-            ["systemctl", "show", "vps-net-stat", "--property=ActiveEnterTimestamp"],
+            ["systemctl", "show", "vps-net-stat",
+             "--property=ActiveEnterTimestampMonotonic"],
             text=True
         ).strip()
         val = out.split("=", 1)[-1].strip()
-        if not val or val == "n/a":
+        if not val or val == "0":
             return "—"
-        from datetime import datetime
-        dt = datetime.strptime(val[:19], "%a %Y-%m-%d %H:%M:%S")
-        diff = int(time.time()) - int(dt.timestamp())
+        # Монотонное время в микросекундах
+        mono_us = int(val)
+        # Текущее монотонное время через /proc/uptime
+        with open("/proc/uptime") as f:
+            uptime_sec = float(f.read().split()[0])
+        boot_mono_us = uptime_sec * 1_000_000
+        # Когда сервис стартовал относительно сейчас
+        diff = int((boot_mono_us - mono_us) / 1_000_000)
+        if diff < 0:
+            diff = 0
         d, h, m = diff//86400, (diff%86400)//3600, (diff%3600)//60
         return f"{d}{T['days_ago']} {h}{T['hrs']} {m}{T['min']}"
     except Exception:
@@ -681,15 +691,15 @@ def cmd_info(conn):
     except Exception:
         svc_ok = False
 
+    GRN = "\033[0;32m"; RED = "\033[0;31m"; NC = "\033[0m"
+    svc_color = GRN if svc_ok else RED
+    svc_str   = T["svc_running"] if svc_ok else T["svc_stopped"]
+
     print(f"\n  {T['info_title']}\n")
-    print(f"  {T['version_cur']:<26} {local_ver}")
-    if remote_ver and remote_ver != local_ver:
-        print(f"  {T['version_new']:<26} {remote_ver}")
-    else:
-        print(f"  {T['version_ok']}")
-    print()
-    svc_str = T["svc_running"] if svc_ok else T["svc_stopped"]
-    print(f"  {svc_str}")
+    print(f"  {T['svc_running' if svc_ok else 'svc_stopped']:<26}".replace(
+        T['svc_running' if svc_ok else 'svc_stopped'],
+        f"{svc_color}{svc_str}{NC}"
+    ))
     print(f"  {T['uptime_lbl']:<26} {service_uptime()}")
     print(f"  {T['last_scan']:<26} {time_ago(last_ts)}")
     print(f"  {T['db_size_lbl']:<26} {fmt(db_size)}")
@@ -770,7 +780,7 @@ def cmd_doctor(conn):
 def cmd_export(conn):
     fmt_choice = input(f"\n  {T['export_choose']}").strip()
     path_raw = input(f"  {T['export_path']}").strip()
-    out_dir = path_raw if path_raw else "/root"
+    out_dir = path_raw if path_raw else "/root/vns-backup"
     os.makedirs(out_dir, exist_ok=True)
 
     do_csv  = fmt_choice in ("1", "3", "")
@@ -949,10 +959,6 @@ def show_menu():
 
     local_ver   = get_local_version()
     remote_ver  = check_remote_version()
-    update_line = None
-    if remote_ver and remote_ver != local_ver:
-        update_line = f"  \033[0;32m{T['version_new']} {remote_ver}\033[0m"
-
     # Лимит (только если установлен — нужна БД)
     bar_line = None
     try:
@@ -966,9 +972,15 @@ def show_menu():
     print(f"\n  ╔══════════════════════════════════════╗")
     print(f"  ║  {T['title']:<36}║")
     print(f"  ╚══════════════════════════════════════╝")
-    print(f"  {T['version_cur']} {local_ver}")
-    if update_line:
-        print(update_line)
+    if remote_ver and remote_ver != local_ver:
+        ver_color = "\033[0;31m"  # красный — устарела
+        update_note = f"  \033[0;32m{T['version_new']} {remote_ver}\033[0m"
+    else:
+        ver_color = "\033[0;32m"  # зелёный — актуальна
+        update_note = None
+    print(f"  {T['version_cur']} {ver_color}{local_ver}\033[0m")
+    if update_note:
+        print(update_note)
     print(f"  {T['disk_usage']} {disk_str}")
     if bar_line:
         print(bar_line)
@@ -976,29 +988,27 @@ def show_menu():
     items = [
         ("1",  T["m1"]),
         ("2",  T["m2"]),
-        ("3",  T["m3"]),
-        ("4",  T["m4"]),
-        ("5",  T["m5"]),
-        ("6",  T["m6"]),
-        ("7",  T["m7"]),
-        ("gc", T["m_charts"]),
+        ("3",  T["m5"]),
+        ("4",  T["m6"]),
+        ("5",  T["m7"]),
+        ("6",  T["m_charts"]),
         ("─",  None),
-        ("8",  T["m_watch_add"]),
-        ("9",  T["m_watch_del"]),
-        ("wl", T["m_watch_list"]),
+        ("11", T["m_watch_add"]),
+        ("12", T["m_watch_del"]),
+        ("10", T["m_watch_list"]),
         ("─",  None),
-        ("10", T["m_reset_server"]),
-        ("11", T["m_reset_port"]),
-        ("12", T["m_export"]),
-        ("13", T["m_limit"]),
+        ("13", T["m_reset_server"]),
+        ("14", T["m_reset_port"]),
+        ("15", T["m_export"]),
+        ("16", T["m_limit"]),
         ("─",  None),
-        ("14", T["m_info"]),
-        ("15", T["m_doctor"]),
+        ("17", T["m_info"]),
+        ("18", T["m_doctor"]),
         ("─",  None),
-        ("16", T["m8"]),
-        ("17", T["m_update"]),
-        ("18", T["m9"]),
-        ("19", T["m10"]),
+        ("19", T["m8"]),
+        ("20", T["m_update"]),
+        ("21", T["m9"]),
+        ("22", T["m10"]),
         ("0",  T["m0"]),
     ]
     for key, label in items:
@@ -1016,53 +1026,53 @@ def interactive_menu():
         if choice == "0":
             clear()
             sys.exit(0)
-        elif choice == "19":
+        elif choice == "22":
             switch_lang()
             pause()
             continue
 
         # Команды требующие БД
-        if choice in ("1","2","3","4","5","6","7","gc","wl","8","9","10","11","12","14","15"):
+        if choice in ("1","2","3","4","5","6","10","11","12","13","14","15","17","18"):
             conn = get_db()
             clear()
             if   choice == "1":  cmd_summary(conn)
             elif choice == "2":  cmd_ports(conn)
-            elif choice == "3":  cmd_today(conn)
-            elif choice == "4":  cmd_month(conn)
-            elif choice == "5":  cmd_all(conn)
-            elif choice == "6":
+            elif choice == "3":  cmd_all(conn)
+            elif choice == "4":
                 try:
                     raw = input(f"  {T['days_prompt']}").strip()
                     n = int(raw) if raw else 30
                 except ValueError:
                     n = 30
                 cmd_days(conn, n)
-            elif choice == "7":  cmd_port_top(conn)
-            elif choice == "gc": cmd_charts(conn)
-            elif choice == "wl": cmd_watch_list(conn)
-            elif choice == "8":  cmd_watch_add(conn)
-            elif choice == "9":  cmd_watch_del(conn)
-            elif choice == "10": do_reset_server(conn)
-            elif choice == "11": do_reset_port(conn)
-            elif choice == "12": cmd_export(conn)
-            elif choice == "14": cmd_info(conn)
-            elif choice == "15": cmd_doctor(conn)
+            elif choice == "5":  cmd_port_top(conn)
+            elif choice == "6":  cmd_charts(conn)
+            elif choice == "10": cmd_watch_list(conn)
+            elif choice == "11": cmd_watch_add(conn)
+            elif choice == "12": cmd_watch_del(conn)
+            elif choice == "13": do_reset_server(conn)
+            elif choice == "14": do_reset_port(conn)
+            elif choice == "15": cmd_export(conn)
+            elif choice == "17": cmd_info(conn)
+            elif choice == "18": cmd_doctor(conn)
             conn.close()
             pause()
-        elif choice == "13":
+        elif choice == "9":
+            pass  # разделитель, игнорируем
+        elif choice == "16":
             cmd_set_limit()
             pause()
-        elif choice == "16":
+        elif choice == "19":
             do_uninstall()
             pause()
-        elif choice == "17":
+        elif choice == "20":
             do_update()
             pause()
-        elif choice == "18":
+        elif choice == "21":
             do_restart()
             pause()
         else:
-            pass  # неверный ввод — просто перерисуем меню
+            pass
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 def main():
