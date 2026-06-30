@@ -135,7 +135,7 @@ STRINGS = {
         "chart_rx":     "↓ Входящий",
         "chart_tx":     "↑ Исходящий",
         "chart_empty":  "Нет данных для графика",
-        "chart_prompt": "Период: [1] 7 дней  [2] 14 дней  [3] 30 дней [1]: ",
+        "chart_prompt": "Период: [1] 7 дней  [2] 14 дней  [3] 30 дней: ",
         "period_prompt": "Период: [1] Сегодня  [2] Текущий месяц  [3] Всё время: ",
         "rx_total": "Входящий всего",
         "tx_total": "Исходящий всего",
@@ -270,7 +270,7 @@ STRINGS = {
         "chart_rx":     "↓ Incoming",
         "chart_tx":     "↑ Outgoing",
         "chart_empty":  "No data for chart",
-        "chart_prompt": "Period: [1] 7 days  [2] 14 days  [3] 30 days [1]: ",
+        "chart_prompt": "Period: [1] 7 days  [2] 14 days  [3] 30 days: ",
         "period_prompt": "Period: [1] Today  [2] This month  [3] All time: ",
         "rx_total": "Total incoming",
         "tx_total": "Total outgoing",
@@ -348,7 +348,7 @@ def cmd_summary(conn):
     port_cnt = conn.execute("SELECT COUNT(DISTINCT port) FROM ports WHERE ts=(SELECT MAX(ts) FROM ports)").fetchone()[0]
 
     tit = T["summary_title"]
-    print(f"\n  {tit}")
+    print(f"\n  {tit}\n")
     print_table(
         [T["period"], T["incoming"], T["outgoing"]],
         [
@@ -357,7 +357,7 @@ def cmd_summary(conn):
             (T["alltime_lbl"], fmt(rx_a), fmt(tx_a)),
         ]
     )
-    print(f"  {T['open_ports']} {port_cnt}")
+    print(f"\n  {T['open_ports']} {port_cnt}")
 
 
 def cmd_ports(conn):

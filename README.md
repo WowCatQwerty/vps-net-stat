@@ -5,10 +5,10 @@
 **English** | [Русский](README.ru.md)
 
 Simple network traffic and port monitor for Linux servers.  
-Tracks incoming/outgoing traffic by day and month, monitors open ports with process names, counts traffic per port. Data is stored in SQLite and **survives reboots**.
+Tracks incoming/outgoing traffic by day and month, monitors open ports with process names, counts exact traffic per port via iptables/nftables. Data is stored in SQLite and **survives reboots**.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-3.5.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
+[![Version](https://img.shields.io/badge/version-4.0.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
 
 </div>
 
@@ -19,6 +19,8 @@ Tracks incoming/outgoing traffic by day and month, monitors open ports with proc
 ```bash
 curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/install.sh | sudo bash
 ```
+
+> ⚠️ Root privileges are required.
 
 Language selection (Russian / English) is shown during install.  
 The service starts immediately and auto-starts after reboot.
@@ -31,10 +33,11 @@ The service starts immediately and auto-starts after reboot.
   systemd (autostart)
         │
         ▼
-   netmon.py (daemon)
+  vps-net-stat.py (daemon)
       /        \
      ▼          ▼
-/proc/net/dev   ss (ports)
+/proc/net/dev  iptables/nftables
+(total traffic) (per-port traffic)
      │          │
      └────┬─────┘
           ▼
@@ -42,7 +45,7 @@ The service starts immediately and auto-starts after reboot.
   (/var/lib/vps-net-stat/data.db)
           │
           ▼
-   netmon-cli.py (vns)
+      vns.py (vns)
    interactive menu
 ```
 
@@ -58,7 +61,7 @@ vns
   ╔══════════════════════════════════════╗
   ║  vps-net-stat — VPS Network Monitor ║
   ╚══════════════════════════════════════╝
-  Version: 3.3.0
+  Version: 4.0.0
   Disk usage: 3.82 MiB  (database: 3.76 MiB, app: 59.20 KiB)
   Monthly limit: ████████████░░░░░░░░  61.2 / 100 GiB (61%)
 
@@ -149,22 +152,23 @@ By default, per-port traffic is **not collected** — add only the ports you car
   ✓ Port added to tracking.
 ```
 
-> **Note on accuracy:** Overall server traffic (`/proc/net/dev`) is exact.
-> Per-port traffic is approximate — the daemon uses `ss` which takes a snapshot
-> of active sockets. Short sessions (< 5 min) may not be captured.
-> For exact per-port tracking, iptables/nftables support is planned for v4.0.0.
+Per-port traffic is measured via **iptables/nftables** — exact counting, no missed connections.  
+The firewall backend is detected automatically (nftables preferred, falls back to iptables).  
+A dedicated chain `VNS_TRACK` is created — existing firewall rules are not affected.  
+Rules are automatically cleaned up when the service stops or the program is uninstalled.
 
 **Default scan frequency:**
 - Overall server traffic — every **60 seconds**
-- Port scanning and per-port traffic — every **300 seconds** (5 minutes)
+- Per-port traffic counters — every **30 seconds**
+- Port list scan — every **300 seconds** (5 minutes)
 
-To change: edit `INTERVAL` and `PORT_INTERVAL` at the top of `/opt/vps-net-stat/netmon.py`.
+To change: edit `INTERVAL` and `PORT_INTERVAL` at the top of `/opt/vps-net-stat/vps-net-stat.py`.
 
 ---
 
 ## IPv6
 
-IPv6 is supported. Port parsing handles both `0.0.0.0:80` and `[::]:80` formats correctly.
+IPv6 is fully supported. Port rules are applied to both `iptables` and `ip6tables`.
 
 ---
 
@@ -191,6 +195,8 @@ Or via command:
 curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/uninstall.sh | sudo bash
 ```
 
+You will be asked separately whether to keep or delete the traffic database.
+
 ---
 
 ## Security
@@ -200,8 +206,8 @@ Hashes are stored in `checksums.txt` attached to each release under Assets.
 
 Manual check:
 ```bash
-sha256sum /opt/vps-net-stat/netmon.py
-sha256sum /opt/vps-net-stat/netmon-cli.py
+sha256sum /opt/vps-net-stat/vps-net-stat.py
+sha256sum /opt/vps-net-stat/vns.py
 ```
 Compare with `checksums.txt` from the release Assets.
 
@@ -211,12 +217,13 @@ Compare with `checksums.txt` from the release Assets.
 
 | Component | Description |
 |---|---|
-| `vps-net-stat.py` | Daemon — reads `/proc/net/dev`, tracks traffic deltas, scans ports via `ss` |
+| `vps-net-stat.py` | Daemon — reads `/proc/net/dev` for total traffic, uses iptables/nftables for per-port traffic |
 | `vns.py` | CLI with interactive menu |
 | `vps-net-stat.service` | systemd unit, auto-starts after reboot |
 | `/var/lib/vps-net-stat/data.db` | SQLite database, accumulates indefinitely |
 | `/var/log/vps-net-stat/daemon.log` | Daemon log |
 | `/etc/vps-net-stat/lang` | Selected UI language |
+| `/etc/vps-net-stat/firewall` | Detected firewall backend (iptables/nftables) |
 
 **Interfaces are detected automatically** via `ip route`. Virtual interfaces (docker, veth, tun, lo, etc.) are excluded.
 
@@ -243,11 +250,12 @@ tail -f /var/log/vps-net-stat/daemon.log
 - Fedora 33+
 - Any Linux with systemd and Python 3.8+
 
-> ⚠️ Root privileges are required for port monitoring (`ss` needs access to process info).
+> ⚠️ Root privileges are required for port monitoring and firewall rule management.
 
 **Dependencies:**
 - Python 3.8+
 - `iproute2` (`ss`, `ip` — usually pre-installed)
+- `iptables` or `nftables` (for per-port traffic tracking)
 
 ---
 
@@ -264,6 +272,7 @@ tail -f /var/log/vps-net-stat/daemon.log
 | Export CSV/JSON | ✅ | ❌ | ❌ | ❌ | ❌ |
 | One-line install | ✅ | ❌ | ❌ | ❌ | ❌ |
 | IPv6 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Exact per-port (fw) | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 

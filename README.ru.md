@@ -5,10 +5,10 @@
 [English](README.md) | **Русский**
 
 Простой монитор трафика и портов для Linux-серверов.  
-Считает входящий/исходящий трафик по дням и месяцам, отслеживает открытые порты с именами процессов, считает трафик по выбранным портам. Данные хранятся в SQLite и **переживают перезагрузки**.
+Считает входящий/исходящий трафик по дням и месяцам, отслеживает открытые порты с именами процессов, точно считает трафик по портам через iptables/nftables. Данные хранятся в SQLite и **переживают перезагрузки**.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-3.5.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
+[![Version](https://img.shields.io/badge/version-4.0.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
 
 </div>
 
@@ -19,6 +19,8 @@
 ```bash
 curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/install.sh | sudo bash
 ```
+
+> ⚠️ Требуются права root.
 
 При установке предлагается выбрать язык — русский или английский.  
 Сервис запускается сразу и поднимается автоматически после перезагрузки.
@@ -31,10 +33,11 @@ curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/inst
   systemd (автозапуск)
         │
         ▼
-   netmon.py (демон)
+  vps-net-stat.py (демон)
       /        \
      ▼          ▼
-/proc/net/dev   ss (порты)
+/proc/net/dev  iptables/nftables
+(общий трафик) (трафик по портам)
      │          │
      └────┬─────┘
           ▼
@@ -42,7 +45,7 @@ curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/inst
   (/var/lib/vps-net-stat/data.db)
           │
           ▼
-   netmon-cli.py (vns)
+      vns.py (vns)
    интерактивное меню
 ```
 
@@ -58,7 +61,7 @@ vns
   ╔══════════════════════════════════════╗
   ║  vps-net-stat — Мониторинг сети VPS ║
   ╚══════════════════════════════════════╝
-  Версия: 3.3.0
+  Версия: 4.0.0
   Размер на диске: 3.82 MiB  (база: 3.76 MiB, программа: 59.20 KiB)
   Месячный лимит: ████████████░░░░░░░░  61.2 / 100 GiB (61%)
 
@@ -149,22 +152,23 @@ vns
   ✓ Порт добавлен в отслеживание.
 ```
 
-> **Примечание о точности:** общий трафик сервера (`/proc/net/dev`) считается точно.
-> Трафик по портам — приблизительный: демон использует `ss`, который делает снимок
-> активных сокетов. Короткие сессии (< 5 мин) могут не попасть в статистику.
-> Точное отслеживание по портам через iptables/nftables запланировано в v4.0.0.
+Трафик по портам измеряется через **iptables/nftables** — точно, без пропусков.  
+Файрвол определяется автоматически (приоритет nftables, fallback на iptables).  
+Создаётся отдельная цепочка `VNS_TRACK` — существующие правила не затрагиваются.  
+Правила автоматически очищаются при остановке сервиса или удалении программы.
 
 **Частота проверки по умолчанию:**
 - Общий трафик сервера — каждые **60 секунд**
-- Сканирование портов и трафик по портам — каждые **300 секунд** (5 минут)
+- Трафик по портам — каждые **30 секунд**
+- Сканирование портов — каждые **300 секунд** (5 минут)
 
-Изменить можно в переменных `INTERVAL` и `PORT_INTERVAL` в начале `/opt/vps-net-stat/netmon.py`.
+Изменить: переменные `INTERVAL` и `PORT_INTERVAL` в начале `/opt/vps-net-stat/vps-net-stat.py`.
 
 ---
 
 ## IPv6
 
-IPv6 поддерживается. Парсинг портов корректно обрабатывает форматы `0.0.0.0:80` и `[::]:80`.
+IPv6 поддерживается полностью. Правила применяются к `iptables` и `ip6tables`.
 
 ---
 
@@ -191,6 +195,8 @@ curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/upda
 curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/uninstall.sh | sudo bash
 ```
 
+При удалении отдельно спрашивается — сохранить или удалить базу данных со статистикой.
+
 ---
 
 ## Безопасность
@@ -200,8 +206,8 @@ curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/unin
 
 Проверить вручную:
 ```bash
-sha256sum /opt/vps-net-stat/netmon.py
-sha256sum /opt/vps-net-stat/netmon-cli.py
+sha256sum /opt/vps-net-stat/vps-net-stat.py
+sha256sum /opt/vps-net-stat/vns.py
 ```
 Сравни с `checksums.txt` из Assets нужного релиза на GitHub.
 
@@ -211,12 +217,13 @@ sha256sum /opt/vps-net-stat/netmon-cli.py
 
 | Компонент | Описание |
 |---|---|
-| `vps-net-stat.py` | Демон — читает `/proc/net/dev`, считает дельты трафика, сканирует порты через `ss` |
+| `vps-net-stat.py` | Демон — читает `/proc/net/dev` для общего трафика, использует iptables/nftables для трафика по портам |
 | `vns.py` | CLI с интерактивным меню |
 | `vps-net-stat.service` | systemd-юнит, автозапуск после перезагрузки |
 | `/var/lib/vps-net-stat/data.db` | SQLite-база, данные копятся бесконечно |
 | `/var/log/vps-net-stat/daemon.log` | Лог демона |
 | `/etc/vps-net-stat/lang` | Выбранный язык интерфейса |
+| `/etc/vps-net-stat/firewall` | Определённый бэкенд файрвола (iptables/nftables) |
 
 **Интерфейсы определяются автоматически** через `ip route`. Виртуальные интерфейсы (docker, veth, tun, lo и т.д.) исключаются.
 
@@ -243,11 +250,12 @@ tail -f /var/log/vps-net-stat/daemon.log
 - Fedora 33+
 - Любой Linux с systemd и Python 3.8+
 
-> ⚠️ Для мониторинга портов нужны права root (`ss` требует доступ к информации о процессах).
+> ⚠️ Для мониторинга портов и управления правилами файрвола нужны права root.
 
 **Зависимости:**
 - Python 3.8+
 - `iproute2` (пакет `ss`, `ip` — обычно уже есть)
+- `iptables` или `nftables` (для точного трафика по портам)
 
 ---
 
@@ -264,6 +272,7 @@ tail -f /var/log/vps-net-stat/daemon.log
 | Экспорт CSV/JSON | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Установка одной командой | ✅ | ❌ | ❌ | ❌ | ❌ |
 | IPv6 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Точный трафик (fw) | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 

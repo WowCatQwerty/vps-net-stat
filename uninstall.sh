@@ -9,8 +9,14 @@ err() { echo -e "${RED}✗ $1${NC}"; exit 1; }
 [[ $EUID -ne 0 ]] && err "Run as root: curl ... | sudo bash"
 
 echo -e "\n${CYN}  vps-net-stat — удаление / uninstall${NC}\n"
-echo -e "  ${RED}Программа и все настройки будут удалены.${NC}"
-echo -e "  The program and all settings will be removed.\n"
+echo -e "  Будет удалено / Will be removed:"
+echo -e "  ${RED}✗${NC} Программа, сервис, логи, настройки"
+echo -e "  ${RED}✗${NC} Program, service, logs, settings"
+echo ""
+echo -e "  Будет сохранено по умолчанию / Kept by default:"
+echo -e "  ${GRN}✓${NC} База данных со статистикой трафика"
+echo -e "  ${GRN}✓${NC} Database with traffic statistics"
+echo ""
 read -rp "  Продолжить? / Continue? [y/N]: " ans < /dev/tty
 
 if [[ "${ans,,}" != "y" ]]; then
@@ -18,11 +24,8 @@ if [[ "${ans,,}" != "y" ]]; then
     exit 0
 fi
 
-# Отдельный вопрос про базу данных
 echo ""
-echo -e "  ${YLW}База данных содержит всю статистику трафика.${NC}"
-echo -e "  ${YLW}Database contains all traffic statistics.${NC}\n"
-read -rp "  Удалить базу данных? / Delete database? [y/N]: " del_db < /dev/tty
+read -rp "  Удалить базу данных? / Delete database too? [y/N]: " del_db < /dev/tty
 
 echo ""
 systemctl stop vps-net-stat    2>/dev/null && ok "Сервис остановлен"
