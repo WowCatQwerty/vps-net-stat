@@ -8,7 +8,7 @@
 Считает входящий/исходящий трафик по дням и месяцам, отслеживает открытые порты с именами процессов, точно считает трафик по портам через iptables/nftables. Данные хранятся в SQLite и **переживают перезагрузки**.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-4.0.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
+[![Version](https://img.shields.io/badge/version-4.1.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
 
 </div>
 
@@ -163,6 +163,12 @@ vns
 - Сканирование портов — каждые **300 секунд** (5 минут)
 
 Изменить: переменные `INTERVAL` и `PORT_INTERVAL` в начале `/opt/vps-net-stat/vps-net-stat.py`.
+
+**Часовой пояс:** день в статистике меняется в полночь по **времени сервера**. Проверить или изменить:
+```bash
+timedatectl status                      # текущий часовой пояс
+timedatectl set-timezone Europe/Moscow  # установить часовой пояс
+```
 
 ---
 

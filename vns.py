@@ -541,13 +541,40 @@ def cmd_watch_del(conn):
     except ValueError:
         print(f"  {T['watch_invalid']}\n")
         return
-    proto_raw = input(f"  Протокол: [1] tcp  [2] udp [1]: ").strip()
-    proto = "udp" if proto_raw == "2" else "tcp"
-    cur = conn.execute(
-        "DELETE FROM watched_ports WHERE port=? AND proto=?", (port, proto)
-    )
+
+    # Проверяем сколько протоколов добавлено для этого порта
+    existing = conn.execute(
+        "SELECT proto FROM watched_ports WHERE port=?", (port,)
+    ).fetchall()
+    protos_existing = [r["proto"] for r in existing]
+
+    if not protos_existing:
+        print(f"  {T['watch_not_found']}\n")
+        return
+
+    if len(protos_existing) == 2:
+        # Оба протокола — предлагаем выбор
+        print(f"  Протокол: [1] tcp  [2] udp  [3] оба")
+        proto_raw = input(f"  → ").strip()
+        if proto_raw == "1":
+            protos = ["tcp"]
+        elif proto_raw == "2":
+            protos = ["udp"]
+        else:
+            protos = ["tcp", "udp"]
+    else:
+        # Только один протокол — удаляем без вопроса
+        protos = protos_existing
+
+    deleted = 0
+    for proto in protos:
+        cur = conn.execute(
+            "DELETE FROM watched_ports WHERE port=? AND proto=?", (port, proto)
+        )
+        deleted += cur.rowcount
     conn.commit()
-    if cur.rowcount:
+
+    if deleted:
         print(f"  {T['watch_deleted']}\n")
     else:
         print(f"  {T['watch_not_found']}\n")
@@ -626,7 +653,7 @@ def switch_lang():
 
 # ── Интерактивное меню ────────────────────────────────────────────────────────
 
-VERSION = "4.0.0"
+VERSION = "4.1.0"
 REPO_RAW = "https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main"
 VERSION_URL = f"{REPO_RAW}/version.txt"
 
