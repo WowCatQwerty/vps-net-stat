@@ -626,7 +626,7 @@ def switch_lang():
 
 # ── Интерактивное меню ────────────────────────────────────────────────────────
 
-VERSION = "3.5.0"
+VERSION = "4.0.0"
 REPO_RAW = "https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main"
 VERSION_URL = f"{REPO_RAW}/version.txt"
 

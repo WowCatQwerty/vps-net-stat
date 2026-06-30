@@ -28,6 +28,27 @@ echo ""
 systemctl stop vps-net-stat    2>/dev/null && ok "Сервис остановлен"
 systemctl disable vps-net-stat 2>/dev/null && ok "Автозапуск отключён"
 
+# Очищаем правила файрвола
+CONF="/etc/vps-net-stat/firewall"
+CHAIN="VNS_TRACK"
+if [[ -f "$CONF" ]]; then
+    FW=$(cat "$CONF")
+    if [[ "$FW" == "iptables" ]]; then
+        for cmd in iptables ip6tables; do
+            command -v "$cmd" &>/dev/null && {
+                $cmd -D INPUT  -j "$CHAIN" 2>/dev/null
+                $cmd -D OUTPUT -j "$CHAIN" 2>/dev/null
+                $cmd -F "$CHAIN" 2>/dev/null
+                $cmd -X "$CHAIN" 2>/dev/null
+            }
+        done
+        ok "Правила iptables очищены"
+    elif [[ "$FW" == "nftables" ]]; then
+        nft delete table inet vns_track 2>/dev/null
+        ok "Правила nftables очищены"
+    fi
+fi
+
 # Удаляем программу
 for path in /opt/vps-net-stat /var/log/vps-net-stat /etc/vps-net-stat; do
     rm -rf "$path" && ok "Удалено: $path"

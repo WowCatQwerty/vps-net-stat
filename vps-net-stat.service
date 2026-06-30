@@ -6,6 +6,21 @@ Wants=network.target
 [Service]
 Type=simple
 ExecStart=/usr/bin/python3 /opt/vps-net-stat/vps-net-stat.py
+ExecStopPost=/usr/bin/python3 -c "
+import subprocess, shutil, os
+CHAIN = 'VNS_TRACK'
+CONF  = '/etc/vps-net-stat/firewall'
+fw = open(CONF).read().strip() if os.path.exists(CONF) else ''
+if fw == 'iptables':
+    for cmd in ['iptables', 'ip6tables']:
+        if shutil.which(cmd):
+            subprocess.run([cmd, '-D', 'INPUT',  '-j', CHAIN], capture_output=True)
+            subprocess.run([cmd, '-D', 'OUTPUT', '-j', CHAIN], capture_output=True)
+            subprocess.run([cmd, '-F', CHAIN],                  capture_output=True)
+            subprocess.run([cmd, '-X', CHAIN],                  capture_output=True)
+elif fw == 'nftables':
+    subprocess.run(['nft', 'delete', 'table', 'inet', 'vns_track'], capture_output=True)
+"
 Restart=on-failure
 RestartSec=10
 User=root
