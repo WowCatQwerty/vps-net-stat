@@ -8,7 +8,7 @@ Simple network traffic and port monitor for Linux servers.
 Tracks incoming/outgoing traffic by day and month, monitors open ports with process names, counts exact traffic per port via iptables/nftables. Data is stored in SQLite and **survives reboots**.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-4.1.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
+[![Version](https://img.shields.io/badge/version-4.2.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
 
 </div>
 
@@ -29,7 +29,7 @@ The service starts immediately and auto-starts after reboot.
 
 ## Architecture
 
-```
+```text
   systemd (autostart)
         │
         ▼
@@ -57,7 +57,7 @@ The service starts immediately and auto-starts after reboot.
 vns
 ```
 
-```
+```text
   ╔══════════════════════════════════════╗
   ║  vps-net-stat — VPS Network Monitor ║
   ╚══════════════════════════════════════╝
@@ -98,7 +98,7 @@ vns
 ## Examples
 
 ### Summary `[1]`
-```
+```text
   vps-net-stat — summary
 
   Period        ↓ Incoming     ↑ Outgoing
@@ -111,7 +111,7 @@ vns
 ```
 
 ### Traffic chart `[6]`
-```
+```text
   Traffic for last 7 days
 
   06-24  ████████░░░░░░░░░░░░░░░░░░░░░░  8.21 GiB
@@ -126,7 +126,7 @@ vns
 ```
 
 ### Monthly limit in menu header
-```
+```text
   Monthly limit: ████████████░░░░░░░░  61.2 / 100 GiB (61%)
 ```
 The bar turns yellow at 70%, red at 90%. Not shown if no limit is set.
@@ -144,7 +144,7 @@ By default, per-port traffic is **not collected** — add only the ports you car
 3. Choose `[7]` — enter port number, protocol, optional comment
 4. Traffic starts accumulating from that moment
 
-```
+```text
   Port number (e.g. 80): 443
   Protocol: [1] tcp  [2] udp  [3] both
   → 1
@@ -156,6 +156,13 @@ Per-port traffic is measured via **iptables/nftables** — exact counting, no mi
 The firewall backend is detected automatically (nftables preferred, falls back to iptables).  
 A dedicated chain `VNS_TRACK` is created — existing firewall rules are not affected.  
 Rules are automatically cleaned up when the service stops or the program is uninstalled.
+
+**No firewall available?** If neither `iptables` nor `nftables` is found, vps-net-stat automatically
+falls back to `ss`-based tracking. It's less precise than the firewall backend:
+- TCP only — UDP ports aren't tracked in this mode (no byte counters available via `ss`).
+- Very short-lived connections that open and close between two polls may be undercounted.
+
+The active backend is shown in `vns` → `[14] System info`.
 
 **Default scan frequency:**
 - Overall server traffic — every **60 seconds**
@@ -229,7 +236,7 @@ Compare with `checksums.txt` from the release Assets.
 | `/var/lib/vps-net-stat/data.db` | SQLite database, accumulates indefinitely |
 | `/var/log/vps-net-stat/daemon.log` | Daemon log |
 | `/etc/vps-net-stat/lang` | Selected UI language |
-| `/etc/vps-net-stat/firewall` | Detected firewall backend (iptables/nftables) |
+| `/etc/vps-net-stat/firewall` | Detected port-traffic backend (iptables/nftables/ss) |
 
 **Interfaces are detected automatically** via `ip route`. Virtual interfaces (docker, veth, tun, lo, etc.) are excluded.
 
@@ -261,7 +268,7 @@ tail -f /var/log/vps-net-stat/daemon.log
 **Dependencies:**
 - Python 3.8+
 - `iproute2` (`ss`, `ip` — usually pre-installed)
-- `iptables` or `nftables` (for per-port traffic tracking)
+- `iptables` or `nftables` recommended (exact per-port traffic tracking; falls back to `ss` — TCP only, approximate — if neither is available)
 
 ---
 

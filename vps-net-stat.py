@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """
-vps-net-stat — VPS Network & Port Statistics Daemon v4.0.0
+vps-net-stat — VPS Network & Port Statistics Daemon v4.2.0
 Точный трафик по портам через iptables/nftables.
+Если ни iptables, ни nftables недоступны — fallback на ss (TCP, приближённо).
 Общий трафик — через /proc/net/dev.
 Данные в SQLite — переживают перезагрузки.
 """
 
-import sqlite3, subprocess, time, os, sys, signal, logging, shutil
+import sqlite3, subprocess, time, os, sys, signal, logging, shutil, re
 from datetime import date
 
 DB_PATH       = "/var/lib/vps-net-stat/data.db"
 LOG_PATH      = "/var/log/vps-net-stat/daemon.log"
-CONF_PATH     = "/etc/vps-net-stat/firewall"   # хранит "iptables" или "nftables"
+CONF_PATH     = "/etc/vps-net-stat/firewall"   # хранит "iptables", "nftables" или "ss" (fallback)
 INTERVAL      = 60
 PORT_INTERVAL = 30   # опрос трафика по портам теперь чаще — точнее
 
@@ -214,6 +215,57 @@ def nftables_teardown():
     nft(["delete", "table", "inet", "vns_track"])
     log.info("nftables rules cleaned up")
 
+# ── ss: fallback-режим (если iptables и nftables недоступны) ────────────────
+# Точность ниже, чем у iptables/nftables:
+#  - работает только для TCP (у UDP-сокетов ss не отдаёт байтовые счётчики);
+#  - счётчики берутся из tcp_info конкретного соединения, поэтому очень
+#    короткие сессии, полностью завершившиеся между двумя опросами,
+#    могут быть недосчитаны (последняя порция байт соединения теряется).
+# Это осознанный компромисс: лучше приближённые данные, чем никаких.
+
+def ss_tcp_connections(port):
+    """Возвращает список (conn_key, bytes_sent, bytes_received) для всех
+    текущих TCP-соединений с локальным портом == port."""
+    try:
+        out = subprocess.check_output(["ss", "-tinH"], text=True, timeout=10)
+    except Exception:
+        return []
+
+    conns = []
+    lines = out.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.startswith(" ") or line.startswith("\t"):
+            i += 1
+            continue
+        parts = line.split()
+        # ss -tinH: State Recv-Q Send-Q Local:Port Peer:Port ...
+        if len(parts) >= 5:
+            local, peer = parts[3], parts[4]
+            info_line = ""
+            if i + 1 < len(lines) and (lines[i+1].startswith(" ") or lines[i+1].startswith("\t")):
+                info_line = lines[i+1]
+                i += 1
+            try:
+                local_port = int(local.rsplit(":", 1)[-1])
+            except ValueError:
+                local_port = None
+            if local_port == port:
+                bs = br = 0
+                m = re.search(r"bytes_sent:(\d+)", info_line)
+                if m:
+                    bs = int(m.group(1))
+                m = re.search(r"bytes_received:(\d+)", info_line)
+                if m:
+                    br = int(m.group(1))
+                conns.append((f"{local}|{peer}", bs, br))
+        i += 1
+    return conns
+
+def ss_available():
+    return shutil.which("ss") is not None
+
 # ── База данных ───────────────────────────────────────────────────────────────
 def init_db(conn):
     conn.executescript("""
@@ -310,17 +362,37 @@ class TrafficCounter:
 
 # ── Точный трафик по портам ───────────────────────────────────────────────────
 class PortTrafficTracker:
-    """Читает счётчики из iptables/nftables и сохраняет дельты в БД."""
+    """Читает счётчики из iptables/nftables (точно) или из ss (fallback,
+    приближённо) и сохраняет дельты в БД."""
 
     def __init__(self, conn, fw):
         self.conn = conn
-        self.fw   = fw  # 'iptables' или 'nftables'
+        self.fw   = fw  # 'iptables', 'nftables' или 'ss'
+        self.ss_conn_state = {}  # conn_key -> (bytes_sent, bytes_received), только для fw='ss'
 
     def _read(self, port, proto):
         if self.fw == "iptables":
             return iptables_read_counters(port, proto)
         else:
             return nftables_read_counters(port, proto)
+
+    def _save_delta(self, day, port, proto, rx_d, tx_d):
+        if rx_d <= 0 and tx_d <= 0:
+            return
+        proc = self.conn.execute("""
+            SELECT process FROM ports
+            WHERE port=? AND proto=? AND ts=(SELECT MAX(ts) FROM ports)
+        """, (port, proto)).fetchone()
+        process = proc["process"] if proc else None
+
+        self.conn.execute("""
+            INSERT INTO port_traffic (day, port, proto, process, rx_bytes, tx_bytes)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(day, port, proto) DO UPDATE SET
+                rx_bytes = rx_bytes + excluded.rx_bytes,
+                tx_bytes = tx_bytes + excluded.tx_bytes,
+                process  = COALESCE(excluded.process, process)
+        """, (day, port, proto, process, rx_d, tx_d))
 
     def tick(self):
         watched = self.conn.execute(
@@ -329,6 +401,12 @@ class PortTrafficTracker:
         if not watched:
             return
 
+        if self.fw == "ss":
+            self._tick_ss(watched)
+        else:
+            self._tick_firewall(watched)
+
+    def _tick_firewall(self, watched):
         day = date.today().isoformat()
         for row in watched:
             port, proto = row["port"], row["proto"]
@@ -359,23 +437,42 @@ class PortTrafficTracker:
                     tx_bytes = excluded.tx_bytes
             """, (port, proto, rx, tx))
 
-            # Сохраняем дельту в дневную статистику
-            if rx_d > 0 or tx_d > 0:
-                # Ищем имя процесса
-                proc = self.conn.execute("""
-                    SELECT process FROM ports
-                    WHERE port=? AND proto=? AND ts=(SELECT MAX(ts) FROM ports)
-                """, (port, proto)).fetchone()
-                process = proc["process"] if proc else None
+            self._save_delta(day, port, proto, rx_d, tx_d)
 
-                self.conn.execute("""
-                    INSERT INTO port_traffic (day, port, proto, process, rx_bytes, tx_bytes)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(day, port, proto) DO UPDATE SET
-                        rx_bytes = rx_bytes + excluded.rx_bytes,
-                        tx_bytes = tx_bytes + excluded.tx_bytes,
-                        process  = COALESCE(excluded.process, process)
-                """, (day, port, proto, process, rx_d, tx_d))
+        self.conn.commit()
+
+    def _tick_ss(self, watched):
+        """Fallback без файрвола: считаем по tcp_info из ss. Только TCP —
+        для UDP-портов в этом режиме трафик не собирается (нет счётчиков)."""
+        day = date.today().isoformat()
+        seen_keys = set()
+
+        for row in watched:
+            port, proto = row["port"], row["proto"]
+            if proto != "tcp":
+                continue
+
+            rx_d_total = tx_d_total = 0
+            for key, bs, br in ss_tcp_connections(port):
+                seen_keys.add(key)
+                prev = self.ss_conn_state.get(key)
+                if prev:
+                    pbs, pbr = prev
+                    ds = bs - pbs if bs >= pbs else bs
+                    dr = br - pbr if br >= pbr else br
+                else:
+                    ds = dr = 0
+                self.ss_conn_state[key] = (bs, br)
+                # bytes_sent сокета = исходящий трафик, bytes_received = входящий
+                tx_d_total += ds
+                rx_d_total += dr
+
+            self._save_delta(day, port, proto, rx_d_total, tx_d_total)
+
+        # Чистим состояние закрытых соединений, чтобы не расти бесконечно
+        for key in list(self.ss_conn_state.keys()):
+            if key not in seen_keys:
+                del self.ss_conn_state[key]
 
         self.conn.commit()
 
@@ -472,8 +569,16 @@ def main():
             iptables_setup_chain()
         else:
             nftables_setup()
+    elif ss_available():
+        fw = "ss"
+        _save_firewall("ss")
+        log.warning(
+            "No firewall found (iptables/nftables). "
+            "Falling back to ss-based port tracking (TCP only, approximate — "
+            "very short-lived connections may be undercounted, UDP not supported)."
+        )
     else:
-        log.warning("No firewall found (iptables/nftables). Per-port tracking disabled.")
+        log.warning("Neither firewall nor ss found. Per-port tracking disabled.")
 
     conn    = get_db()
     counter = TrafficCounter(conn, ifaces)
@@ -493,8 +598,8 @@ def main():
         except Exception as e:
             log.error(f"Traffic tick error: {e}")
 
-        # Синхронизация правил файрвола — каждые 30 секунд
-        if fw and now - last_fw_sync >= 30:
+        # Синхронизация правил файрвола — каждые 30 секунд (не нужна в режиме ss)
+        if fw in ("iptables", "nftables") and now - last_fw_sync >= 30:
             try:
                 known_ports = sync_firewall_rules(conn, fw, known_ports)
                 last_fw_sync = now

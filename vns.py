@@ -5,6 +5,7 @@ import sqlite3, sys, os, subprocess, time
 from datetime import date, datetime
 
 DB_PATH = "/var/lib/vps-net-stat/data.db"
+FIREWALL_FILE = "/etc/vps-net-stat/firewall"
 
 # ── i18n ─────────────────────────────────────────────────────────────────────
 LANG_FILE = "/etc/vps-net-stat/lang"
@@ -90,6 +91,11 @@ STRINGS = {
         "last_scan":    "Последнее сканирование:",
         "db_size_lbl":  "База данных:",
         "tracked_lbl":  "Отслеживаемых портов:",
+        "backend_lbl":  "Учёт трафика по портам:",
+        "backend_iptables": "iptables (точно)",
+        "backend_nftables": "nftables (точно)",
+        "backend_ss":       "ss — fallback (приближённо, только TCP)",
+        "backend_none":     "не активен (нет iptables/nftables/ss)",
         "uptime_lbl":   "Время работы сервиса:",
         "ago":          "назад",
         "never":        "никогда",
@@ -225,6 +231,11 @@ STRINGS = {
         "last_scan":    "Last scan:",
         "db_size_lbl":  "Database:",
         "tracked_lbl":  "Tracked ports:",
+        "backend_lbl":  "Port traffic backend:",
+        "backend_iptables": "iptables (exact)",
+        "backend_nftables": "nftables (exact)",
+        "backend_ss":       "ss — fallback (approximate, TCP only)",
+        "backend_none":     "not active (no iptables/nftables/ss)",
         "uptime_lbl":   "Service uptime:",
         "ago":          "ago",
         "never":        "never",
@@ -653,7 +664,7 @@ def switch_lang():
 
 # ── Интерактивное меню ────────────────────────────────────────────────────────
 
-VERSION = "4.1.0"
+VERSION = "4.2.0"
 REPO_RAW = "https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main"
 VERSION_URL = f"{REPO_RAW}/version.txt"
 
@@ -708,6 +719,24 @@ def service_uptime():
     except Exception:
         return "—"
 
+def get_firewall_backend():
+    try:
+        with open(FIREWALL_FILE) as f:
+            fw = f.read().strip()
+    except Exception:
+        return None
+    return fw if fw in ("iptables", "nftables", "ss") else None
+
+def firewall_backend_label():
+    fw = get_firewall_backend()
+    if fw == "iptables":
+        return T["backend_iptables"]
+    if fw == "nftables":
+        return T["backend_nftables"]
+    if fw == "ss":
+        return T["backend_ss"]
+    return T["backend_none"]
+
 # ── vns info ─────────────────────────────────────────────────────────────────
 def cmd_info(conn):
     local_ver = get_local_version()
@@ -737,6 +766,7 @@ def cmd_info(conn):
     print(f"  {T['uptime_lbl']:<26} {service_uptime()}")
     print(f"  {T['last_scan']:<26} {time_ago(last_ts)}")
     print(f"  {T['tracked_lbl']:<26} {tracked}")
+    print(f"  {T['backend_lbl']:<26} {firewall_backend_label()}")
     print()
 
 # ── vns doctor ───────────────────────────────────────────────────────────────
