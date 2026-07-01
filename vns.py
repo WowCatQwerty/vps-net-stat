@@ -61,7 +61,9 @@ STRINGS = {
         "port_col":     "Порт",
         "proto_col":    "Протокол",
         "process_col":  "Процесс",
-        "uninstall_confirm": "Удалить vps-net-stat? Все данные будут удалены. [y/N]: ",
+        "uninstall_confirm": "Удалить vps-net-stat? [y/N]: ",
+        "uninstall_del_db":  "Удалить также базу данных со статистикой? [y/N]: ",
+        "uninstall_db_kept": "База данных сохранена: /var/lib/vps-net-stat",
         "uninstall_done":    "Программа удалена.",
         "uninstall_abort":   "Отмена.",
         "restart_done":      "Сервис перезапущен.",
@@ -75,6 +77,7 @@ STRINGS = {
         "watch_proto_prompt": "Протокол [tcp/udp, по умолчанию tcp]: ",
         "watch_comment_prompt": "Комментарий (необязательно): ",
         "watch_added": "Порт добавлен в отслеживание.",
+        "watch_ss_warning": "⚠ Активен резервный режим ss: точность не гарантируется (только TCP, короткие сессии могут быть недосчитаны).",
         "watch_already": "Этот порт уже отслеживается.",
         "watch_del_prompt": "Номер порта для удаления: ",
         "watch_proto_del_prompt": "Протокол [tcp/udp, по умолчанию tcp]: ",
@@ -201,7 +204,9 @@ STRINGS = {
         "port_col":     "Port",
         "proto_col":    "Protocol",
         "process_col":  "Process",
-        "uninstall_confirm": "Uninstall vps-net-stat? All data will be deleted. [y/N]: ",
+        "uninstall_confirm": "Uninstall vps-net-stat? [y/N]: ",
+        "uninstall_del_db":  "Also delete the traffic database? [y/N]: ",
+        "uninstall_db_kept": "Database kept: /var/lib/vps-net-stat",
         "uninstall_done":    "Uninstalled successfully.",
         "uninstall_abort":   "Cancelled.",
         "restart_done":      "Service restarted.",
@@ -215,6 +220,7 @@ STRINGS = {
         "watch_proto_prompt": "Protocol [tcp/udp, default tcp]: ",
         "watch_comment_prompt": "Comment (optional): ",
         "watch_added": "Port added to tracking.",
+        "watch_ss_warning": "⚠ Fallback ss mode is active: accuracy isn't guaranteed (TCP only, short-lived sessions may be undercounted).",
         "watch_already": "This port is already being tracked.",
         "watch_del_prompt": "Port number to remove: ",
         "watch_proto_del_prompt": "Protocol [tcp/udp, default tcp]: ",
@@ -541,6 +547,8 @@ def cmd_watch_add(conn):
     conn.commit()
     if added:
         print(f"  {T['watch_added']}\n")
+        if get_firewall_backend() == "ss":
+            print(f"  \033[1;33m{T['watch_ss_warning']}\033[0m\n")
     else:
         print(f"  {T['watch_already']}\n")
 
@@ -635,18 +643,29 @@ def do_update():
 
 def do_uninstall():
     ans = input(f"\n  {T['uninstall_confirm']}").strip().lower()
-    if ans == "y":
-        subprocess.run(["systemctl","stop","vps-net-stat"], check=False)
-        subprocess.run(["systemctl","disable","vps-net-stat"], check=False)
-        for path in ["/opt/vps-net-stat","/var/lib/vps-net-stat","/var/log/vps-net-stat",
-                     "/etc/systemd/system/vps-net-stat.service","/usr/local/bin/vns",
-                     "/etc/vps-net-stat"]:
-            subprocess.run(["rm","-rf",path], check=False)
-        subprocess.run(["systemctl","daemon-reload"], check=False)
-        print(f"\n  {T['uninstall_done']}\n")
-        sys.exit(0)
-    else:
+    if ans != "y":
         print(f"  {T['uninstall_abort']}")
+        return
+
+    del_db = input(f"  {T['uninstall_del_db']}").strip().lower()
+
+    subprocess.run(["systemctl","stop","vps-net-stat"], check=False)
+    subprocess.run(["systemctl","disable","vps-net-stat"], check=False)
+
+    paths = ["/opt/vps-net-stat","/var/log/vps-net-stat",
+             "/etc/systemd/system/vps-net-stat.service","/usr/local/bin/vns",
+             "/etc/vps-net-stat"]
+    if del_db == "y":
+        paths.append("/var/lib/vps-net-stat")
+
+    for path in paths:
+        subprocess.run(["rm","-rf",path], check=False)
+    subprocess.run(["systemctl","daemon-reload"], check=False)
+
+    if del_db != "y":
+        print(f"\n  {T['uninstall_db_kept']}")
+    print(f"\n  {T['uninstall_done']}\n")
+    sys.exit(0)
 
 def do_restart():
     subprocess.run(["systemctl","restart","vps-net-stat"], check=False)
@@ -664,7 +683,7 @@ def switch_lang():
 
 # ── Интерактивное меню ────────────────────────────────────────────────────────
 
-VERSION = "4.2.0"
+VERSION = "4.3.0"
 REPO_RAW = "https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main"
 VERSION_URL = f"{REPO_RAW}/version.txt"
 
@@ -767,6 +786,9 @@ def cmd_info(conn):
     print(f"  {T['last_scan']:<26} {time_ago(last_ts)}")
     print(f"  {T['tracked_lbl']:<26} {tracked}")
     print(f"  {T['backend_lbl']:<26} {firewall_backend_label()}")
+    if get_firewall_backend() == "ss":
+        YLW = "\033[1;33m"
+        print(f"  {YLW}{T['watch_ss_warning']}{NC}")
     print()
 
 # ── vns doctor ───────────────────────────────────────────────────────────────

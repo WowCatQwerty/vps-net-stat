@@ -8,7 +8,7 @@ Simple network traffic and port monitor for Linux servers.
 Tracks incoming/outgoing traffic by day and month, monitors open ports with process names, counts exact traffic per port via iptables/nftables. Data is stored in SQLite and **survives reboots**.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-4.2.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
+[![Version](https://img.shields.io/badge/version-4.3.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
 
 </div>
 
@@ -162,7 +162,7 @@ falls back to `ss`-based tracking. It's less precise than the firewall backend:
 - TCP only — UDP ports aren't tracked in this mode (no byte counters available via `ss`).
 - Very short-lived connections that open and close between two polls may be undercounted.
 
-The active backend is shown in `vns` → `[14] System info`.
+The active backend is shown in `vns` → `[14] System info`. When running in `ss` fallback mode, a visible warning is also shown right when you add a port to tracking, and again in System info — accuracy is not guaranteed in this mode.
 
 **Default scan frequency:**
 - Overall server traffic — every **60 seconds**

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-vps-net-stat — VPS Network & Port Statistics Daemon v4.2.0
+vps-net-stat — VPS Network & Port Statistics Daemon v4.3.0
 Точный трафик по портам через iptables/nftables.
 Если ни iptables, ни nftables недоступны — fallback на ss (TCP, приближённо).
 Общий трафик — через /proc/net/dev.
@@ -622,9 +622,15 @@ def main():
             except Exception as e:
                 log.error(f"Port scan error: {e}")
 
-        time.sleep(INTERVAL)
+        # Спим короткими интервалами, чтобы быстро реагировать на SIGTERM/SIGINT —
+        # иначе systemd может убить процесс по таймауту раньше, чем отработает cleanup()
+        slept = 0.0
+        while running and slept < INTERVAL:
+            time.sleep(1)
+            slept += 1
 
-    # Очистка при выходе
+    # Очистка при выходе — обязательно выполняется при остановке через systemctl stop
+    log.info("Shutting down, running cleanup…")
     if fw:
         cleanup(fw)
     log.info("vps-net-stat stopped.")
