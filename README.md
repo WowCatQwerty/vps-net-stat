@@ -8,7 +8,7 @@ Simple network traffic and port monitor for Linux servers.
 Tracks incoming/outgoing traffic by day and month, monitors open ports with process names, counts exact traffic per port via iptables/nftables. Data is stored in SQLite and **survives reboots**.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-4.3.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
+[![Version](https://img.shields.io/badge/version-4.4.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
 
 </div>
 
@@ -80,7 +80,7 @@ vns
   ──────────────────────────────────────
   [10] Reset server traffic stats
   [11] Reset port traffic stats
-  [12] Export statistics
+  [12] Export / Import statistics
   [13] Set monthly traffic limit
   ──────────────────────────────────────
   [14] System info
@@ -196,6 +196,23 @@ curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/upda
 
 SHA-256 integrity check is performed before replacing any files.  
 Data is **not deleted** on update.
+
+---
+
+## Export / Import
+
+From menu: `vns` → `[12]`
+
+**Export** saves your data to a directory (`/root/vns-backup` by default) as CSV, JSON, or both.
+
+**Import** reads a backup from a directory. It looks for `vns_export.json` first; if that's not
+present, it falls back to reading the CSV files (`vns_traffic.csv`, `vns_port_traffic.csv`,
+`vns_watched.csv`) — whatever it finds. It reports what it found before doing anything.
+
+If a record from the backup already exists (same day/port/protocol), you're asked how to resolve it:
+- **Sum traffic together** — add backup values to existing ones
+- **Keep current data** — skip the backup value, existing data is untouched
+- **Overwrite with backup data** — replace existing values with the backup's
 
 ---
 

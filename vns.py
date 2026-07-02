@@ -130,11 +130,22 @@ STRINGS = {
         "doc_issues":   "Найдены проблемы:",
         "m_info":       "Информация о системе",
         "m_doctor":     "Диагностика",
-        "m_export":     "Экспорт статистики",
+        "m_export":     "Экспорт / Импорт статистики",
         "m_limit":      "Настроить месячный лимит трафика",
+        "export_import_choose": "Действие: [1] Экспорт  [2] Импорт: ",
         "export_choose":"Формат: [1] CSV  [2] JSON  [3] Оба: ",
         "export_path":  "Сохранить в директорию [/root/vns-backup]: ",
         "export_done":  "Экспорт завершён:",
+        "import_path":  "Директория с бэкапом [/root/vns-backup]: ",
+        "import_searching": "Ищу файлы бэкапа…",
+        "import_found_json": "Найден vns_export.json — использую его.",
+        "import_found_csv":  "vns_export.json не найден, использую CSV-файлы:",
+        "import_none_found": "Файлы бэкапа не найдены в указанной директории.",
+        "import_summary":    "В бэкапе найдено: traffic_daily — {}, port_traffic — {}, watched_ports — {}",
+        "import_conflict_prompt": "Как поступать при совпадении записей (день/порт/протокол уже есть)?\n  [1] Суммировать трафик\n  [2] Оставить текущие данные (пропустить бэкап)\n  [3] Заменить текущие данные данными из бэкапа\n  → ",
+        "import_invalid_choice": "Некорректный выбор, импорт отменён.",
+        "import_done": "Импорт завершён. Обработано записей: {}",
+        "import_error": "Ошибка чтения бэкапа:",
         "limit_prompt": "Месячный лимит ГиБ (0 = отключить): ",
         "limit_set":    "Лимит установлен:",
         "limit_bar_lbl":"Месячный лимит:",
@@ -273,11 +284,22 @@ STRINGS = {
         "doc_issues":   "Issues found:",
         "m_info":       "System info",
         "m_doctor":     "Diagnostics",
-        "m_export":     "Export statistics",
+        "m_export":     "Export / Import statistics",
         "m_limit":      "Set monthly traffic limit",
+        "export_import_choose": "Action: [1] Export  [2] Import: ",
         "export_choose":"Format: [1] CSV  [2] JSON  [3] Both: ",
         "export_path":  "Save to directory [/root/vns-backup]: ",
         "export_done":  "Export complete:",
+        "import_path":  "Backup directory [/root/vns-backup]: ",
+        "import_searching": "Looking for backup files…",
+        "import_found_json": "Found vns_export.json — using it.",
+        "import_found_csv":  "vns_export.json not found, using CSV files:",
+        "import_none_found": "No backup files found in the given directory.",
+        "import_summary":    "Found in backup: traffic_daily — {}, port_traffic — {}, watched_ports — {}",
+        "import_conflict_prompt": "How should matching records (same day/port/protocol already exist) be handled?\n  [1] Sum traffic together\n  [2] Keep current data (skip backup)\n  [3] Overwrite with backup data\n  → ",
+        "import_invalid_choice": "Invalid choice, import cancelled.",
+        "import_done": "Import complete. Records processed: {}",
+        "import_error": "Error reading backup:",
         "limit_prompt": "Monthly limit GiB (0 = disable): ",
         "limit_set":    "Limit set:",
         "limit_bar_lbl":"Monthly limit:",
@@ -683,7 +705,7 @@ def switch_lang():
 
 # ── Интерактивное меню ────────────────────────────────────────────────────────
 
-VERSION = "4.3.0"
+VERSION = "4.4.0"
 REPO_RAW = "https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main"
 VERSION_URL = f"{REPO_RAW}/version.txt"
 
@@ -861,7 +883,14 @@ def cmd_doctor(conn):
     else:
         print(f"  {T['doc_issues']} {len(issues)}\n")
 
-# ── Экспорт ──────────────────────────────────────────────────────────────────
+# ── Экспорт / Импорт ──────────────────────────────────────────────────────────
+def cmd_export_import(conn):
+    choice = input(f"\n  {T['export_import_choose']}").strip()
+    if choice == "2":
+        cmd_import(conn)
+    else:
+        cmd_export(conn)
+
 def cmd_export(conn):
     fmt_choice = input(f"\n  {T['export_choose']}").strip()
     path_raw = input(f"  {T['export_path']}").strip()
@@ -925,6 +954,157 @@ def cmd_export(conn):
     for s in saved:
         print(f"    {s}")
     print()
+
+def _load_backup_data(in_dir):
+    """Загружает данные бэкапа: сначала ищет vns_export.json, иначе собирает
+    из CSV-файлов. Возвращает (data_dict, source_label) или (None, None)."""
+    json_path = os.path.join(in_dir, "vns_export.json")
+    if os.path.exists(json_path):
+        import json
+        with open(json_path) as f:
+            data = json.load(f)
+        return data, "json"
+
+    csv_traffic  = os.path.join(in_dir, "vns_traffic.csv")
+    csv_ports    = os.path.join(in_dir, "vns_port_traffic.csv")
+    csv_watched  = os.path.join(in_dir, "vns_watched.csv")
+    found = [p for p in (csv_traffic, csv_ports, csv_watched) if os.path.exists(p)]
+    if not found:
+        return None, None
+
+    import csv
+    data = {"traffic_daily": [], "port_traffic": [], "watched_ports": []}
+
+    if os.path.exists(csv_traffic):
+        with open(csv_traffic, newline="") as f:
+            for row in csv.DictReader(f):
+                row["rx_bytes"] = int(row["rx_bytes"])
+                row["tx_bytes"] = int(row["tx_bytes"])
+                data["traffic_daily"].append(row)
+
+    if os.path.exists(csv_ports):
+        with open(csv_ports, newline="") as f:
+            for row in csv.DictReader(f):
+                row["rx_bytes"] = int(row["rx_bytes"])
+                row["tx_bytes"] = int(row["tx_bytes"])
+                data["port_traffic"].append(row)
+
+    if os.path.exists(csv_watched):
+        with open(csv_watched, newline="") as f:
+            for row in csv.DictReader(f):
+                data["watched_ports"].append(row)
+
+    return data, "csv"
+
+def cmd_import(conn):
+    path_raw = input(f"\n  {T['import_path']}").strip()
+    in_dir = path_raw if path_raw else "/root/vns-backup"
+
+    print(f"\n  {T['import_searching']}")
+    data, source = _load_backup_data(in_dir)
+
+    if data is None:
+        print(f"  {T['import_none_found']}\n")
+        return
+
+    if source == "json":
+        print(f"  {T['import_found_json']}")
+    else:
+        print(f"  {T['import_found_csv']}")
+        for name in ("vns_traffic.csv", "vns_port_traffic.csv", "vns_watched.csv"):
+            p = os.path.join(in_dir, name)
+            if os.path.exists(p):
+                print(f"    {p}")
+
+    rows_traffic = data.get("traffic_daily", [])
+    rows_ports   = data.get("port_traffic", [])
+    rows_watched = data.get("watched_ports", [])
+
+    print(f"\n  {T['import_summary'].format(len(rows_traffic), len(rows_ports), len(rows_watched))}\n")
+
+    if not (rows_traffic or rows_ports or rows_watched):
+        print(f"  {T['no_data']}\n")
+        return
+
+    mode_raw = input(f"  {T['import_conflict_prompt']}").strip()
+    if mode_raw not in ("1", "2", "3"):
+        print(f"  {T['import_invalid_choice']}\n")
+        return
+    # 1 = сумма, 2 = оставить текущие (пропустить), 3 = заменить данными из бэкапа
+
+    processed = 0
+
+    for r in rows_traffic:
+        day, iface = r["day"], r["iface"]
+        rx, tx = int(r["rx_bytes"]), int(r["tx_bytes"])
+        existing = conn.execute(
+            "SELECT rx_bytes, tx_bytes FROM traffic_daily WHERE day=? AND iface=?",
+            (day, iface)
+        ).fetchone()
+        if not existing:
+            conn.execute(
+                "INSERT INTO traffic_daily (day, iface, rx_bytes, tx_bytes) VALUES (?, ?, ?, ?)",
+                (day, iface, rx, tx)
+            )
+        elif mode_raw == "1":
+            conn.execute(
+                "UPDATE traffic_daily SET rx_bytes = rx_bytes + ?, tx_bytes = tx_bytes + ? WHERE day=? AND iface=?",
+                (rx, tx, day, iface)
+            )
+        elif mode_raw == "3":
+            conn.execute(
+                "UPDATE traffic_daily SET rx_bytes = ?, tx_bytes = ? WHERE day=? AND iface=?",
+                (rx, tx, day, iface)
+            )
+        # mode_raw == "2" — пропускаем, оставляем текущие данные
+        processed += 1
+
+    for r in rows_ports:
+        day, port, proto = r["day"], int(r["port"]), r["proto"]
+        process = r.get("process") or None
+        rx, tx = int(r["rx_bytes"]), int(r["tx_bytes"])
+        existing = conn.execute(
+            "SELECT rx_bytes, tx_bytes FROM port_traffic WHERE day=? AND port=? AND proto=?",
+            (day, port, proto)
+        ).fetchone()
+        if not existing:
+            conn.execute(
+                "INSERT INTO port_traffic (day, port, proto, process, rx_bytes, tx_bytes) VALUES (?, ?, ?, ?, ?, ?)",
+                (day, port, proto, process, rx, tx)
+            )
+        elif mode_raw == "1":
+            conn.execute(
+                "UPDATE port_traffic SET rx_bytes = rx_bytes + ?, tx_bytes = tx_bytes + ? WHERE day=? AND port=? AND proto=?",
+                (rx, tx, day, port, proto)
+            )
+        elif mode_raw == "3":
+            conn.execute(
+                "UPDATE port_traffic SET rx_bytes = ?, tx_bytes = ?, process = COALESCE(?, process) WHERE day=? AND port=? AND proto=?",
+                (rx, tx, process, day, port, proto)
+            )
+        processed += 1
+
+    for r in rows_watched:
+        port, proto = int(r["port"]), r.get("proto") or "tcp"
+        comment, added = r.get("comment") or None, r.get("added")
+        existing = conn.execute(
+            "SELECT 1 FROM watched_ports WHERE port=? AND proto=?", (port, proto)
+        ).fetchone()
+        if not existing:
+            conn.execute(
+                "INSERT INTO watched_ports (port, proto, comment, added) VALUES (?, ?, ?, ?)",
+                (port, proto, comment, added or date.today().isoformat())
+            )
+        elif mode_raw == "3":
+            conn.execute(
+                "UPDATE watched_ports SET comment=?, added=? WHERE port=? AND proto=?",
+                (comment, added, port, proto)
+            )
+        # mode_raw в ("1","2") для watched_ports — записи не дублируются, просто оставляем текущую
+        processed += 1
+
+    conn.commit()
+    print(f"  {T['import_done'].format(processed)}\n")
 
 
 # ── Графики ───────────────────────────────────────────────────────────────────
@@ -1137,7 +1317,7 @@ def interactive_menu():
             elif choice == "9":  cmd_watch_list(conn)
             elif choice == "10": do_reset_server(conn)
             elif choice == "11": do_reset_port(conn)
-            elif choice == "12": cmd_export(conn)
+            elif choice == "12": cmd_export_import(conn)
             elif choice == "14": cmd_info(conn)
             elif choice == "15": cmd_doctor(conn)
             conn.close()

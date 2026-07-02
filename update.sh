@@ -32,23 +32,23 @@ echo -e "  ${YLW}Обновление: ${CURRENT_VER} → ${REMOTE_VER}${NC}\n"
 TMPDIR=$(mktemp -d)
 trap "rm -rf $TMPDIR" EXIT
 
-echo -e "  ${YLW}→${NC} vps-net-stat.py"
+inf "vps-net-stat.py"
 curl -f#L "$REPO/vps-net-stat.py"      -o "$TMPDIR/vps-net-stat.py"
 
-echo -e "  ${YLW}→${NC} vns.py"
+inf "vns.py"
 curl -f#L "$REPO/vns.py"  -o "$TMPDIR/vns.py"
 
-echo -e "  ${YLW}→${NC} vps-net-stat.service"
+inf "vps-net-stat.service"
 curl -f#L "$REPO/vps-net-stat.service" -o "$TMPDIR/vps-net-stat.service"
 
-echo -e "  ${YLW}→${NC} version.txt"
+inf "version.txt"
 curl -fsSL "$REPO/version.txt"   -o "$TMPDIR/version.txt"
 
 ok "Файлы скачаны"
 
 inf "Проверяю целостность файлов (SHA-256)…"
 NEW_VER=$(cat "$TMPDIR/version.txt" | tr -d '\n\r')
-echo -e "  ${YLW}→${NC} checksums.txt"
+inf "checksums.txt"
 curl -f#L "https://github.com/WowCatQwerty/vps-net-stat/releases/download/v${NEW_VER}/checksums.txt" -o "$TMPDIR/checksums.txt"
 
 cd "$TMPDIR"
