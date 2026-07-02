@@ -8,7 +8,7 @@ Simple network traffic and port monitor for Linux servers.
 Tracks incoming/outgoing traffic by day and month, monitors open ports with process names, counts exact traffic per port via iptables/nftables. Data is stored in SQLite and **survives reboots**.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-4.4.1-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
+[![Version](https://img.shields.io/badge/version-4.4.2-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
 
 </div>
 
@@ -182,6 +182,14 @@ timedatectl set-timezone Europe/Moscow  # set timezone
 ## IPv6
 
 IPv6 is fully supported. Port rules are applied to both `iptables` and `ip6tables`.
+
+---
+
+## Terminal compatibility note
+
+The interactive `vns` menu intentionally prints plain text without forced colors for menu item labels, so text color follows your terminal's own theme (dark or light) instead of a hardcoded value that could become unreadable on some backgrounds.
+
+Some terminal emulators (e.g. Termius) apply their own heuristic syntax highlighting to certain English words inside plain text (like "info" or "Export"), which can make isolated words appear in a different color even though vps-net-stat sends no color codes for them. This is a behavior of the terminal emulator itself, not a bug in vps-net-stat — check your terminal's highlighting/theme settings if this bothers you.
 
 ---
 

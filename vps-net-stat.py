@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-vps-net-stat — VPS Network & Port Statistics Daemon v4.4.1
+vps-net-stat — VPS Network & Port Statistics Daemon v4.4.2
 Точный трафик по портам через iptables/nftables.
 Если ни iptables, ни nftables недоступны — fallback на ss (TCP, приближённо).
 Общий трафик — через /proc/net/dev.

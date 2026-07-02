@@ -705,7 +705,7 @@ def switch_lang():
 
 # ── Интерактивное меню ────────────────────────────────────────────────────────
 
-VERSION = "4.4.1"
+VERSION = "4.4.2"
 REPO_RAW = "https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main"
 VERSION_URL = f"{REPO_RAW}/version.txt"
 
@@ -1276,12 +1276,11 @@ def show_menu():
         ("19", T["m10"]),
         ("0",  T["m0"]),
     ]
-    WHT = "\033[0;37m"; NC = "\033[0m"
     for key, label in items:
         if key == "─":
             print(f"  {'─'*40}")
         else:
-            print(f"  [{key}] {WHT}{label}{NC}")
+            print(f"  [{key}] {label}")
     print()
 
 def interactive_menu():
