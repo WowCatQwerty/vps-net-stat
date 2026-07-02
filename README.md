@@ -8,7 +8,7 @@ Simple network traffic and port monitor for Linux servers.
 Tracks incoming/outgoing traffic by day and month, monitors open ports with process names, counts exact traffic per port via iptables/nftables. Data is stored in SQLite and **survives reboots**.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-4.4.0-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
+[![Version](https://img.shields.io/badge/version-4.4.1-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
 
 </div>
 
