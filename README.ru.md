@@ -8,7 +8,7 @@
 Считает входящий/исходящий трафик по дням и месяцам, отслеживает открытые порты с именами процессов, точно считает трафик по портам через iptables/nftables. Данные хранятся в SQLite и **переживают перезагрузки**.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-4.4.3-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
+[![Version](https://img.shields.io/badge/version-4.4.4-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
 
 </div>
 

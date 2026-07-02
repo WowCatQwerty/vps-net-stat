@@ -49,7 +49,7 @@ ok "Файлы скачаны"
 inf "Проверяю целостность файлов (SHA-256)…"
 NEW_VER=$(cat "$TMPDIR/version.txt" | tr -d '\n\r')
 inf "checksums.txt"
-curl -f#L "https://github.com/WowCatQwerty/vps-net-stat/releases/download/${NEW_VER}/checksums.txt" -o "$TMPDIR/checksums.txt"
+curl -f#L "https://github.com/WowCatQwerty/vps-net-stat/releases/download/v${NEW_VER}/checksums.txt" -o "$TMPDIR/checksums.txt"
 
 cd "$TMPDIR"
 CHECKSUM_FAIL=0
