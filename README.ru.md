@@ -9,6 +9,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-4.4.4-green.svg)](https://github.com/WowCatQwerty/vps-net-stat/releases)
+[![Live Demo](https://img.shields.io/badge/демо-запустить-4a9eff.svg)](https://wowcatqwerty.github.io/vps-net-stat/)
 
 </div>
 
