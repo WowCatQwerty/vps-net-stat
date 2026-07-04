@@ -16,15 +16,28 @@
   const $brandTag = document.getElementById("brandTag");
   const $langBtn = document.getElementById("langBtn");
   const $resetBtn = document.getElementById("resetBtn");
+  const $heroInner = document.getElementById("heroInner");
+  const $scrollCueText = document.getElementById("scrollCueText");
 
   // ── i18n ────────────────────────────────────────────────────────────────
   const STRINGS = {
     en: {
       brandTag: "— interactive demo menu",
+      heroTagline: "Simple <b>network traffic and port monitor</b> for Linux servers. Tracks traffic by day and month, watches open ports with process names, and counts <b>exact per-port traffic</b> via iptables/nftables. Data lives in SQLite and survives reboots.",
+      heroBadges: ["GPLv3 · Open Source", "Python 3", "systemd", "SQLite", "iptables / nftables", "IPv6"],
+      heroFeature1Title: "Exact per-port traffic",
+      heroFeature1Desc: "Real byte counters via firewall rules — not estimates, not sampling.",
+      heroFeature2Title: "Survives reboots",
+      heroFeature2Desc: "History stored in SQLite, accumulates indefinitely by default.",
+      heroFeature3Title: "Interactive TUI menu",
+      heroFeature3Desc: "No config files to edit — everything through a friendly terminal menu.",
+      heroBtnDemo: "Try the live demo ↓",
+      heroBtnGithub: "View on GitHub",
+      scrollCue: "Scroll for demo",
       hintOpen: "Type {vns} and press {Enter} to open the menu",
       hintHistory: "{↑}/{↓} command history",
       resetBtn: "↺ reset",
-      resetConfirm: "Reset the demo to a fresh install state? All fake traffic and settings will be lost.",
+      resetConfirm: "Reset the demo completely? The program will be \"uninstalled\" — all fake traffic and settings will be lost.",
       welcome: "Welcome to the vps-net-stat demo.",
       notInstalled: "The program isn't \"installed\" in this session yet.",
       typeInstall: "Type:  install.sh",
@@ -183,10 +196,21 @@
     },
     ru: {
       brandTag: "— интерактивное демо меню",
+      heroTagline: "Простой <b>монитор трафика и портов</b> для Linux-серверов. Считает трафик по дням и месяцам, отслеживает открытые порты с именами процессов и точно считает <b>трафик по каждому порту</b> через iptables/nftables. Данные хранятся в SQLite и переживают перезагрузки.",
+      heroBadges: ["GPLv3 · Открытый код", "Python 3", "systemd", "SQLite", "iptables / nftables", "IPv6"],
+      heroFeature1Title: "Точный трафик по портам",
+      heroFeature1Desc: "Настоящие байтовые счётчики через правила файрвола — не оценка, не выборка.",
+      heroFeature2Title: "Переживает перезагрузки",
+      heroFeature2Desc: "История хранится в SQLite и копится бесконечно по умолчанию.",
+      heroFeature3Title: "Интерактивное TUI-меню",
+      heroFeature3Desc: "Не нужно редактировать конфиги — всё через удобное меню в терминале.",
+      heroBtnDemo: "Попробовать демо ↓",
+      heroBtnGithub: "Открыть на GitHub",
+      scrollCue: "Прокрутите к демо",
       hintOpen: "Введите {vns} и нажмите {Enter}, чтобы открыть меню",
       hintHistory: "{↑}/{↓} история команд",
       resetBtn: "↺ сброс",
-      resetConfirm: "Сбросить демо к состоянию новой установки? Весь фейковый трафик и настройки будут потеряны.",
+      resetConfirm: "Полностью сбросить демо? Программа будет «удалена» — весь фейковый трафик и настройки будут потеряны.",
       welcome: "Добро пожаловать в демо vps-net-stat.",
       notInstalled: "Программа пока не установлена в этой сессии.",
       typeInstall: "Наберите:  install.sh",
@@ -410,18 +434,18 @@
 
   function loadState(){
     try{
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return freshState("en");
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return null; // fresh visit — program isn't "installed" yet
       const parsed = JSON.parse(raw);
       if (!parsed || !parsed.installed) return null; // "uninstalled"
       if (!parsed.shellHistory) parsed.shellHistory = [];
       return parsed;
     }catch(e){
-      return freshState("en");
+      return null;
     }
   }
-  function saveState(){ if (state) localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  function wipeState(){ localStorage.removeItem(STORAGE_KEY); }
+  function saveState(){ if (state) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  function wipeState(){ sessionStorage.removeItem(STORAGE_KEY); }
 
   let state = loadState();
 
@@ -1134,6 +1158,50 @@
   }
 
   // ── Static (non-terminal) i18n: header, hint bar, buttons ──────────────
+  function renderHero(){
+    const t = state ? T() : T_noState();
+    const badgesHtml = t.heroBadges.map((b, i) =>
+      `<span class="hero-badge${i === 0 ? ' accent-badge' : ''}">${esc(b)}</span>`
+    ).join("");
+
+    $heroInner.innerHTML = `
+      <div class="hero-mark">
+        <svg viewBox="0 0 100 100" fill="none"><path d="M20 65 L38 35 L52 55 L65 30 L80 60" stroke="#4a9eff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h1 class="hero-title">vps-net-stat</h1>
+      <p class="hero-tagline">${t.heroTagline}</p>
+      <div class="hero-badges">${badgesHtml}</div>
+      <div class="hero-features">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg>
+          </div>
+          <div class="feature-title">${esc(t.heroFeature1Title)}</div>
+          <div class="feature-desc">${esc(t.heroFeature1Desc)}</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <div class="feature-title">${esc(t.heroFeature2Title)}</div>
+          <div class="feature-desc">${esc(t.heroFeature2Desc)}</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v5"/></svg>
+          </div>
+          <div class="feature-title">${esc(t.heroFeature3Title)}</div>
+          <div class="feature-desc">${esc(t.heroFeature3Desc)}</div>
+        </div>
+      </div>
+      <div class="hero-links">
+        <a class="hero-btn primary" href="#demo" id="scrollToDemoBtn">${esc(t.heroBtnDemo)}</a>
+        <a class="hero-btn secondary" href="https://github.com/WowCatQwerty/vps-net-stat" target="_blank" rel="noopener">${esc(t.heroBtnGithub)}</a>
+      </div>
+    `;
+    $scrollCueText.textContent = t.scrollCue;
+  }
+
   function applyStaticI18n(){
     const t = state ? T() : T_noState();
     document.documentElement.lang = (state ? state.lang : currentUiLang());
@@ -1144,6 +1212,7 @@
     $hint.innerHTML =
       `<span>${t.hintOpen.replace("{vns}","<kbd>vns</kbd>").replace("{Enter}","<kbd>Enter</kbd>")}</span>` +
       `<span>${t.hintHistory.replace("{↑}","<kbd>↑</kbd>").replace("{↓}","<kbd>↓</kbd>")}</span>`;
+    renderHero();
   }
 
   // ── Boot / welcome ──────────────────────────────────────────────────────
@@ -1240,20 +1309,60 @@
 
   // ── Reset button ──────────────────────────────────────────────────────────
   $resetBtn.addEventListener("click", () => {
+    if (!inputEnabled) return; // don't allow resetting mid-install/update/restart
     const t = state ? T() : T_noState();
     if (!confirm(t.resetConfirm)) return;
     const lang = state ? state.lang : currentUiLang();
+    rememberUiLang(lang);
     wipeState();
-    state = freshState(lang);
-    saveState();
+    state = null;
     clearScreen();
     mode = "shell";
     boot();
     buildInputRow();
   });
 
+  // ── Smooth scroll to #demo — only on deliberate user clicks ────────────
+  // Deliberately NOT using CSS `scroll-behavior: smooth` on <html>, because
+  // that would also animate the browser's automatic jump-to-#hash on page
+  // load (e.g. after a refresh, or opening a link that already has #demo
+  // in the URL) — which raced against hero content still rendering and
+  // left the page scrolled to a broken mid-way position on load.
+  function scrollToDemo(e){
+    e.preventDefault();
+    const demoEl = document.getElementById("demo");
+    if (demoEl && demoEl.scrollIntoView){
+      demoEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+  document.getElementById("scrollCue").addEventListener("click", scrollToDemo);
+  // The "Try the live demo" button lives inside #heroInner, which gets
+  // fully re-rendered on every renderHero() call (boot + language switch),
+  // so a direct listener on the button itself would be lost on re-render.
+  // Delegating from the stable #heroInner parent survives that.
+  $heroInner.addEventListener("click", (e) => {
+    const btn = e.target.closest("#scrollToDemoBtn");
+    if (btn) scrollToDemo(e);
+  });
+
+  // Disable the browser's automatic scroll-position restoration on reload —
+  // otherwise a page refresh could restore a stale mid-scroll position from
+  // the previous visit, fighting with the logic above.
+  if ("scrollRestoration" in history){
+    history.scrollRestoration = "manual";
+  }
+
   // ── Start ────────────────────────────────────────────────────────────────
   boot();
   buildInputRow();
+
+  // Safety net: if the page was loaded with #demo already in the URL
+  // (shared link, browser-restored scroll position, etc.), force the
+  // viewport back to the very top instead of leaving it mid-render.
+  // Runs after boot() has synchronously rendered the hero content, so the
+  // page height is final before we correct the scroll position.
+  if (window.scrollY > 0 || location.hash){
+    window.scrollTo(0, 0);
+  }
 
 })();
