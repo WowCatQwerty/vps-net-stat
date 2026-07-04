@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+  // Strip any #hash from the URL as early as possible — before the browser
+  // gets a chance to auto-scroll to it on load (e.g. a stale #demo from a
+  // previous visit, a shared link, or browser scroll-restoration). This
+  // must run before any layout happens, hence the inline <script> at the
+  // very top of <head>, ahead of styles and the deferred demo.js. Without
+  // this, the page could load already scrolled to a broken mid-way
+  // position while hero content is still being laid out.
+  if (location.hash){
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+  if ("scrollRestoration" in history){
+    history.scrollRestoration = "manual";
+  }
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>vps-net-stat — interactive demo menu</title>
@@ -53,12 +68,7 @@
     *{animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important;}
   }
 
-  /* Note: scroll-behavior is NOT set globally on <html>. If it were, the
-     browser would smooth-scroll to any #hash present in the URL on page
-     load (e.g. after a refresh or a shared link with #demo), racing against
-     the JS that renders hero content — this caused the page to load
-     already scrolled to a broken mid-way position. Smooth scrolling is
-     applied only to deliberate user clicks via JS (see scrollToId below). */
+  html{ scroll-behavior:smooth; }
 
   /* ── Hero section (first screen) ───────────────────────── */
   .hero{

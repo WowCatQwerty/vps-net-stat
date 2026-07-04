@@ -1322,47 +1322,8 @@
     buildInputRow();
   });
 
-  // ── Smooth scroll to #demo — only on deliberate user clicks ────────────
-  // Deliberately NOT using CSS `scroll-behavior: smooth` on <html>, because
-  // that would also animate the browser's automatic jump-to-#hash on page
-  // load (e.g. after a refresh, or opening a link that already has #demo
-  // in the URL) — which raced against hero content still rendering and
-  // left the page scrolled to a broken mid-way position on load.
-  function scrollToDemo(e){
-    e.preventDefault();
-    const demoEl = document.getElementById("demo");
-    if (demoEl && demoEl.scrollIntoView){
-      demoEl.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }
-  document.getElementById("scrollCue").addEventListener("click", scrollToDemo);
-  // The "Try the live demo" button lives inside #heroInner, which gets
-  // fully re-rendered on every renderHero() call (boot + language switch),
-  // so a direct listener on the button itself would be lost on re-render.
-  // Delegating from the stable #heroInner parent survives that.
-  $heroInner.addEventListener("click", (e) => {
-    const btn = e.target.closest("#scrollToDemoBtn");
-    if (btn) scrollToDemo(e);
-  });
-
-  // Disable the browser's automatic scroll-position restoration on reload —
-  // otherwise a page refresh could restore a stale mid-scroll position from
-  // the previous visit, fighting with the logic above.
-  if ("scrollRestoration" in history){
-    history.scrollRestoration = "manual";
-  }
-
   // ── Start ────────────────────────────────────────────────────────────────
   boot();
   buildInputRow();
-
-  // Safety net: if the page was loaded with #demo already in the URL
-  // (shared link, browser-restored scroll position, etc.), force the
-  // viewport back to the very top instead of leaving it mid-render.
-  // Runs after boot() has synchronously rendered the hero content, so the
-  // page height is final before we correct the scroll position.
-  if (window.scrollY > 0 || location.hash){
-    window.scrollTo(0, 0);
-  }
 
 })();
