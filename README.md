@@ -30,6 +30,9 @@ The service starts immediately and auto-starts after reboot.
 
 ## Architecture
 
+<details>
+<summary>Show diagram</summary>
+
 ```text
   systemd (autostart)
         │
@@ -50,6 +53,8 @@ The service starts immediately and auto-starts after reboot.
    interactive menu
 ```
 
+</details>
+
 ---
 
 ## Interactive Menu
@@ -57,6 +62,9 @@ The service starts immediately and auto-starts after reboot.
 ```bash
 vns
 ```
+
+<details>
+<summary>Show menu preview</summary>
 
 ```text
   ╔══════════════════════════════════════╗
@@ -94,9 +102,14 @@ vns
   [0]  Exit
 ```
 
+</details>
+
 ---
 
 ## Examples
+
+<details>
+<summary>Show output examples</summary>
 
 ### Summary `[1]`
 ```text
@@ -132,11 +145,16 @@ vns
 ```
 The bar turns yellow at 70%, red at 90%. Not shown if no limit is set.
 
+</details>
+
 ---
 
 ## Port Traffic Tracking
 
 By default, per-port traffic is **not collected** — add only the ports you care about.
+
+<details>
+<summary>Show details: how to add a port, firewall backend, scan frequency, timezone</summary>
 
 **How to add a port:**
 
@@ -177,6 +195,8 @@ To change: edit `INTERVAL` and `PORT_INTERVAL` at the top of `/opt/vps-net-stat/
 timedatectl status        # check current timezone
 timedatectl set-timezone Europe/Moscow  # set timezone
 ```
+
+</details>
 
 ---
 
@@ -290,20 +310,46 @@ tail -f /var/log/vps-net-stat/daemon.log
 
 ---
 
-## Comparison
+## Comparison with alternatives
 
-| Feature | vps-net-stat | vnStat | nload | iftop | bmon |
+> **Note:** All tools support IPv6 and multi-interface monitoring. Real-time-only tools (nload, iftop, bmon) are excluded as they do not store history.
+
+| Feature | vps-net-stat | darkstat | vnStat | ntopng | netdata |
 |---|:---:|:---:|:---:|:---:|:---:|
-| Traffic history | ✅ | ✅ | ❌ | ❌ | ✅ |
-| Per-port traffic | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Process names | ✅ | ❌ | ❌ | ❌ | ❌ |
-| SQLite storage | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Interactive menu | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Monthly limit | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Export CSV/JSON | ✅ | ❌ | ❌ | ❌ | ❌ |
-| One-line install | ✅ | ❌ | ❌ | ❌ | ❌ |
-| IPv6 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Exact per-port (fw) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Per-port exact traffic** | ✅ (iptables/nftables) | 🟡 (by host, not exact bytes) | ❌ | ✅ (DPI + flows) | 🟡 (via eBPF, approx) |
+| **Process names** | ✅ (port → process mapping) | ❌ | ❌ | 🟡 (with nProbe+sysdig) | ✅ (apps.plugin) |
+| **Web UI** | 🟡 (planned) | ✅ | 🟡 (vnstati images only) | ✅ | ✅ |
+| **Native alerts** | 🟡 (planned) | ❌ | ❌ | ✅ | ✅ |
+| **CLI interface** | ✅ TUI menu | ❌ (web only) | ✅ Commands | 🟡 (web primary) | 🟡 (web primary) |
+| **DPI / Protocol detection** | ❌ | 🟡 (basic protocol) | ❌ | ✅ (nDPI) | 🟡 (partial) |
+| **Data survives reboot** | ✅ (SQLite, default) | 🟡 (needs --export/--import config) | ✅ (binary DB, default) | ✅ | ✅ |
+| **Data export** | ✅ CSV/JSON | ❌ | 🟡 JSON/XML | ✅ REST API | ✅ API / Prometheus |
+| **Resource usage** | 🟢 Low | 🟢 Low | 🟢 Low | 🔴 High | 🔴 High |
+| **Ease of setup** | 🟢 Easy | 🟢 Easy | 🟢 Easy | 🔴 Complex | 🟡 Medium |
+| **Zero-config** | 🟢 Yes | 🟡 (needs export/import for persistence) | 🟢 Yes | 🔴 No | 🟢 Yes |
+
+**Legend:** ✅ Yes / ❌ No / 🟡 Partial or requires configuration / 🟢🔴🟡 Rating
+
+<details>
+<summary><strong>Notes on specific features</strong> (click to expand)</summary>
+
+| Feature | Explanation |
+|---|---|
+| **Per-port exact traffic** | Exact byte counters via firewall rules (iptables/nftables). darkstat uses libpcap sniffing — sees hosts and ports but does not count exact bytes per port. netdata uses eBPF tracing — approximate, not exact counters. vnStat does not track ports at all. |
+| **Process names** | vps-net-stat maps open ports to process names via `ss`. netdata has built-in `apps.plugin` for process monitoring. ntopng requires nProbe (paid for some features) + sysdig kernel module — not available out of the box. darkstat and vnStat do not show process names. |
+| **Web UI** | darkstat and ntopng have full web interfaces. netdata is web-based. vnStat generates static images via `vnstati`. vps-net-stat is CLI/TUI only; web UI is planned. |
+| **Native alerts** | Built-in notification systems. ntopng and netdata have configurable alerts. vps-net-stat plans Telegram integration. darkstat and vnStat have no alerting. |
+| **CLI interface** | vps-net-stat has interactive TUI menu. vnStat uses command-line commands. darkstat has no CLI interface (web only). ntopng and netdata are primarily web-based with limited CLI. |
+| **DPI / Protocol detection** | Deep Packet Inspection — analyzing packet content to identify protocols (YouTube, SSH, etc.). ntopng uses nDPI library. darkstat has basic protocol detection. netdata has partial support. vps-net-stat and vnStat do not have DPI. |
+| **Data survives reboot** | Persistent storage by default. vps-net-stat uses SQLite. vnStat uses binary database. ntopng and netdata store data persistently. darkstat stores data in memory by default; persistence requires manual `--export`/`--import` configuration. |
+| **Data export** | vps-net-stat exports to CSV and JSON. ntopng and netdata have REST APIs. vnStat has JSON/XML output but no full history export. darkstat has no export capability. |
+| **Resource usage** | Approximate classification. vps-net-stat, darkstat, and vnStat are lightweight daemons. ntopng is resource-intensive (requires significant RAM/CPU). netdata's memory footprint grows directly with the number of collected metrics — the more plugins and data sources enabled, the more RAM it consumes over time; there are known reports of memory usage climbing well beyond default expectations on long-running instances, and in containerized setups this has been reported to cause restarts under memory pressure. |
+| **Ease of setup** | vps-net-stat, darkstat, and vnStat have one-line or package-manager installation. ntopng requires complex configuration. netdata is medium — easy install but many options to configure. |
+| **Zero-config** | Works immediately after install without manual configuration. vps-net-stat, vnStat, and netdata work out of the box. darkstat requires export/import setup for persistence. ntopng needs configuration. |
+
+</details>
+
+*Data collected and verified on July 2, 2026.*
 
 ---
 
