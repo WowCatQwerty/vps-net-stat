@@ -2,13 +2,12 @@
 <html lang="en">
 <head>
 <script>
-  // Strip any #hash from the URL as early as possible — before the browser
-  // gets a chance to auto-scroll to it on load (e.g. a stale #demo from a
-  // previous visit, a shared link, or browser scroll-restoration). This
-  // must run before any layout happens, hence the inline <script> at the
-  // very top of <head>, ahead of styles and the deferred demo.js. Without
-  // this, the page could load already scrolled to a broken mid-way
-  // position while hero content is still being laid out.
+  // The page now uses a JS-driven full-screen slide (see demo.js) instead of
+  // native document scrolling, so the browser can no longer land "mid-page"
+  // on load — there's nothing for it to scroll. We just remember whether
+  // the URL asked for the demo slide directly (e.g. a shared #demo link),
+  // so demo.js can jump straight there without the slide-in animation.
+  window.__wantsDemoSlide = location.hash === "#demo";
   if (location.hash){
     history.replaceState(null, "", location.pathname + location.search);
   }
@@ -49,19 +48,36 @@
   }
 
   *{box-sizing:border-box;}
-  html,body{height:100%;}
+  html{ overflow:hidden; } /* the slide container below owns all scrolling */
   body{
     margin:0;
-    min-height:100vh;
+    overflow:hidden;
+    height:100vh;
+    background: var(--bg);
+    color:var(--text);
+    font-family:var(--mono);
+  }
+
+  /* ── Slide container: two full-height screens, JS drives the transform ── */
+  #slideTrack{
+    width:100%;
+    height:200vh; /* two screens stacked */
+    transition: transform 1.1s cubic-bezier(.65,0,.35,1);
+    will-change: transform;
+  }
+  .slide-screen{
+    width:100%;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    position:relative;
     background:
       radial-gradient(ellipse 900px 600px at 15% -10%, var(--bg-glow-1), transparent 60%),
       radial-gradient(ellipse 800px 500px at 105% 10%, var(--bg-glow-2), transparent 55%),
       var(--bg);
-    color:var(--text);
-    font-family:var(--mono);
-    display:flex;
-    flex-direction:column;
-    align-items:center;
+    overflow:hidden;
   }
 
   @media (prefers-reduced-motion: reduce){
@@ -72,14 +88,8 @@
 
   /* ── Hero section (first screen) ───────────────────────── */
   .hero{
-    width:100%;
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    padding:60px 16px 40px;
-    position:relative;
+    padding:24px 16px;
+    overflow-y:auto; /* if content is taller than viewport on small screens, scroll internally instead of breaking the slide */
   }
   .hero-inner{
     width:100%;
@@ -175,6 +185,8 @@
     cursor:pointer;
     border:1px solid var(--border);
     transition:transform .15s ease, border-color .15s ease, background .15s ease;
+    -webkit-appearance:none;
+    appearance:none;
   }
   .hero-btn:hover{ transform:translateY(-1px); }
   .hero-btn.primary{
@@ -205,6 +217,7 @@
     text-decoration:none;
     background:none;
     border:none;
+    padding:0;
     cursor:pointer;
     font-family:var(--mono);
     animation:scrollBounce 2.2s ease-in-out infinite;
@@ -217,17 +230,45 @@
   }
 
   @media (max-width:720px){
-    .hero-features{ grid-template-columns:1fr; }
-    .hero-title{ font-size:30px; }
+    .hero-features{ grid-template-columns:1fr; gap:10px; }
+    .hero-title{ font-size:26px; }
+    .hero-tagline{ font-size:14px; margin-bottom:20px; }
+    .hero-mark{ width:52px; height:52px; margin-bottom:18px; }
+    .hero-mark svg{ width:26px; height:26px; }
+    .hero-badges{ margin-bottom:26px; gap:6px; }
+    .hero-badge{ font-size:10.5px; padding:4px 10px; }
+    .hero-features{ margin-bottom:26px; }
+    .feature-card{ padding:14px 16px 13px; }
+    .hero-links{ margin-bottom:16px; }
+    /* The scroll cue overlaps hand-scrolled content on small screens where
+       the hero doesn't fit in one viewport — hide it here; touch users
+       scroll directly, they don't need the hint or the wheel-slide affordance. */
+    .scroll-cue{ display:none; }
+  }
+
+  @media (max-width:480px), (max-height:700px){
+    .hero{ padding:16px 14px; }
+    .hero-mark{ width:42px; height:42px; margin-bottom:12px; }
+    .hero-mark svg{ width:20px; height:20px; }
+    .hero-title{ font-size:21px; margin-bottom:8px; }
+    .hero-tagline{ font-size:12.5px; line-height:1.5; margin-bottom:14px; }
+    .hero-tagline br{ display:none; }
+    .hero-badges{ margin-bottom:16px; gap:5px; }
+    .hero-badge{ font-size:10px; padding:3px 8px; }
+    .hero-features{ gap:8px; margin-bottom:16px; }
+    .feature-card{ padding:11px 13px 10px; }
+    .feature-icon{ width:24px; height:24px; margin-bottom:8px; }
+    .feature-icon svg{ width:13px; height:13px; }
+    .feature-title{ font-size:12.5px; margin-bottom:4px; }
+    .feature-desc{ font-size:11px; }
+    .hero-links{ margin-bottom:10px; gap:8px; }
+    .hero-btn{ padding:9px 16px; font-size:12px; }
   }
 
   /* ── Demo section (second screen) ──────────────────────── */
   .demo-section{
-    width:100%;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    padding:20px 16px 60px;
+    padding:20px 16px 40px;
+    overflow-y:auto; /* on small screens, the header+terminal stack can exceed 100vh */
   }
 
   /* ── Header ─────────────────────────────────────────── */
@@ -404,15 +445,16 @@
 </head>
 <body>
 
-  <section class="hero" id="hero">
+<div id="slideTrack">
+  <section class="slide-screen hero" id="hero">
     <div class="hero-inner" id="heroInner"></div>
-    <a class="scroll-cue" href="#demo" id="scrollCue">
+    <button class="scroll-cue" id="scrollCue" type="button">
       <span id="scrollCueText">Scroll for demo</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-    </a>
+    </button>
   </section>
 
-  <section class="demo-section" id="demo">
+  <section class="slide-screen demo-section" id="demo">
     <header class="page-head">
       <div class="brand-row">
         <div class="brand-mark">
@@ -444,6 +486,8 @@
   </div>
 
   </section>
+
+</div>
 
 <script src="demo.js"></script>
 </body>
