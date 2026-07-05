@@ -1322,87 +1322,40 @@
     buildInputRow();
   });
 
-  // ── Fullscreen slide scroll (hero ⇄ demo terminal) ──────────────────────
-  // One wheel movement (or a button click) smoothly slides the whole page
-  // between the two full-height screens. The one exception: while the
-  // cursor is over the terminal output and there's still room to scroll
-  // inside it, the wheel controls the terminal's own scrollbar instead —
-  // otherwise reading a long command output would be impossible.
-  const $slideTrack = document.getElementById("slideTrack");
-  let currentSlide = 0; // 0 = hero, 1 = demo
-  let slideAnimating = false;
-  const SLIDE_COUNT = 2;
-  const SLIDE_ANIM_MS = 1100; // must stay in sync with the CSS transition duration on #slideTrack
-
-  // Set an explicit starting transform before any user interaction — some
-  // browsers won't smoothly interpolate the very first change to a property
-  // that never had an inline value, treating it as part of initial layout
-  // rather than a transition.
-  $slideTrack.style.transform = "translateY(0px)";
-
-  function goToSlide(index){
-    index = Math.max(0, Math.min(SLIDE_COUNT - 1, index));
-    if (index === currentSlide) return;
-    currentSlide = index;
-    slideAnimating = true;
-    $slideTrack.style.transform = `translateY(-${currentSlide * 100}vh)`;
-    setTimeout(() => { slideAnimating = false; }, SLIDE_ANIM_MS);
-  }
-
-  function isScrollableAtEdge(el, deltaY){
-    // Returns true if el has no more room to scroll in the wheel direction —
-    // meaning the page-level slide should take over instead of the element.
-    if (!el) return true;
-    const atTop = el.scrollTop <= 0;
-    const atBottom = Math.ceil(el.scrollTop + el.clientHeight) >= el.scrollHeight;
-    if (deltaY < 0) return atTop;    // scrolling up — is it already at the top?
-    if (deltaY > 0) return atBottom; // scrolling down — is it already at the bottom?
-    return true;
-  }
-
-  window.addEventListener("wheel", (e) => {
-    if (slideAnimating){ e.preventDefault(); return; }
-
-    // If the cursor is over a scrollable region that still has room to
-    // move in this direction, let it scroll natively — don't hijack it.
-    const overTermBody = e.target.closest && e.target.closest(".term-body");
-    const overHero = e.target.closest && e.target.closest(".hero");
-    let scrollableRegion = null;
-    if (overTermBody) scrollableRegion = overTermBody;
-    else if (overHero) scrollableRegion = overHero.querySelector ? overHero : null;
-
-    if (scrollableRegion && !isScrollableAtEdge(scrollableRegion, e.deltaY)){
-      return; // native scroll inside the region, don't touch the slide
+  // ── Slide navigation (hero ⇄ demo terminal) ─────────────────────────────
+  // The actual sliding/snapping animation is handled entirely by the browser
+  // via CSS scroll-snap (see .slide-screen rules in index.html) — it works
+  // natively for wheel, trackpad, AND touch swipe, and correctly lets the
+  // terminal's own internal scroll take priority until its content is fully
+  // read, before handing off to the page-level snap. No JS is needed for
+  // any of that. We only need a couple of lines for the two explicit
+  // "jump to demo" buttons, and for direct #demo deep links on load.
+  function scrollToDemo(){
+    const demoEl = document.getElementById("demo");
+    if (demoEl && demoEl.scrollIntoView){
+      demoEl.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-
-    e.preventDefault();
-    if (e.deltaY > 10) goToSlide(currentSlide + 1);
-    else if (e.deltaY < -10) goToSlide(currentSlide - 1);
-  }, { passive: false });
-
-  document.getElementById("scrollCue").addEventListener("click", () => goToSlide(1));
+  }
+  document.getElementById("scrollCue").addEventListener("click", scrollToDemo);
   // The "Try the live demo" button lives inside #heroInner, which is fully
   // re-rendered on every renderHero() call (boot + language switch), so a
   // direct listener on the button would be lost on re-render. Delegating
   // from the stable #heroInner parent survives that.
   $heroInner.addEventListener("click", (e) => {
-    if (e.target.closest("#scrollToDemoBtn")) goToSlide(1);
+    if (e.target.closest("#scrollToDemoBtn")) scrollToDemo();
   });
 
   // ── Start ────────────────────────────────────────────────────────────────
   boot();
   buildInputRow();
 
-  // If the visitor arrived via a direct #demo link, show that slide
-  // immediately without the slide-in animation (jarring on first paint).
+  // If the visitor arrived via a direct #demo link, jump straight there
+  // without the snap animation (jarring on first paint). The explicit
+  // {behavior:"instant"} option overrides the CSS scroll-behavior:smooth
+  // for this one programmatic call, per spec.
   if (window.__wantsDemoSlide){
-    currentSlide = 1;
-    $slideTrack.style.transition = "none";
-    $slideTrack.style.transform = "translateY(-100vh)";
-    // Restore the normal transition for subsequent user-triggered slides.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => { $slideTrack.style.transition = ""; });
-    });
+    const demoEl = document.getElementById("demo");
+    if (demoEl) demoEl.scrollIntoView({ behavior: "instant", block: "start" });
   }
 
 })();

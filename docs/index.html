@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
 <script>
-  // The page now uses a JS-driven full-screen slide (see demo.js) instead of
-  // native document scrolling, so the browser can no longer land "mid-page"
-  // on load — there's nothing for it to scroll. We just remember whether
-  // the URL asked for the demo slide directly (e.g. a shared #demo link),
-  // so demo.js can jump straight there without the slide-in animation.
+  // The page uses native CSS scroll-snap for the hero/demo slide (see the
+  // .slide-screen rules below and the tiny bit of JS in demo.js that jumps
+  // straight to #demo without animation on a direct deep link). We still
+  // strip any #hash from the URL immediately, before layout, so a stale
+  // #demo from a previous visit or a shared link doesn't cause the browser
+  // to auto-scroll before demo.js has even run.
   window.__wantsDemoSlide = location.hash === "#demo";
   if (location.hash){
     history.replaceState(null, "", location.pathname + location.search);
@@ -48,26 +49,27 @@
   }
 
   *{box-sizing:border-box;}
-  html{ overflow:hidden; } /* the slide container below owns all scrolling */
+  html{
+    scroll-behavior:smooth;
+    scroll-snap-type: y mandatory;
+    height:100%;
+  }
   body{
     margin:0;
-    overflow:hidden;
-    height:100vh;
     background: var(--bg);
     color:var(--text);
     font-family:var(--mono);
   }
 
-  /* ── Slide container: two full-height screens, JS drives the transform ── */
-  #slideTrack{
-    width:100%;
-    height:200vh; /* two screens stacked */
-    transition: transform 1.1s cubic-bezier(.65,0,.35,1);
-    will-change: transform;
-  }
+  /* ── Slide screens: two full-height sections, browser-native scroll-snap
+     drives the animation (wheel, trackpad, AND touch swipe all work for
+     free — no JS wheel-event hijacking needed, which notably never fires
+     for touch scrolling on mobile in the first place). ──────────────── */
   .slide-screen{
     width:100%;
     height:100vh;
+    scroll-snap-align:start;
+    scroll-snap-stop:always;
     display:flex;
     flex-direction:column;
     align-items:center;
@@ -83,8 +85,6 @@
   @media (prefers-reduced-motion: reduce){
     *{animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important;}
   }
-
-  html{ scroll-behavior:smooth; }
 
   /* ── Hero section (first screen) ───────────────────────── */
   .hero{
@@ -445,7 +445,6 @@
 </head>
 <body>
 
-<div id="slideTrack">
   <section class="slide-screen hero" id="hero">
     <div class="hero-inner" id="heroInner"></div>
     <button class="scroll-cue" id="scrollCue" type="button">
@@ -487,8 +486,6 @@
 
   </section>
 
-</div>
-
-<script src="demo.js"></script>
+<script src="demo.js?v=2"></script>
 </body>
 </html>
