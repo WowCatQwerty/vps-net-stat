@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
 <script>
-  // The page uses native CSS scroll-snap for the hero/demo slide (see the
-  // .slide-screen rules below and the tiny bit of JS in demo.js that jumps
-  // straight to #demo without animation on a direct deep link). We still
-  // strip any #hash from the URL immediately, before layout, so a stale
-  // #demo from a previous visit or a shared link doesn't cause the browser
-  // to auto-scroll before demo.js has even run.
+  // The page uses a JS-driven full-screen slide between hero and demo (see
+  // demo.js — wheel and touch swipe both drive an explicit multi-second
+  // CSS transform transition, not the browser's built-in smooth-scroll,
+  // since that can't be made to last a couple of seconds). We strip any
+  // #hash from the URL immediately, before layout, so a stale #demo from a
+  // previous visit or a shared link doesn't cause the browser to
+  // auto-scroll before demo.js has even run; demo.js reads
+  // window.__wantsDemoSlide to jump straight to the demo slide instead.
   window.__wantsDemoSlide = location.hash === "#demo";
   if (location.hash){
     history.replaceState(null, "", location.pathname + location.search);
@@ -49,27 +51,30 @@
   }
 
   *{box-sizing:border-box;}
-  html{
-    scroll-behavior:smooth;
-    scroll-snap-type: y mandatory;
-    height:100%;
-  }
+  html{ overflow:hidden; height:100%; } /* #slideTrack below owns all scrolling via JS transform */
   body{
     margin:0;
+    overflow:hidden;
+    height:100vh;
     background: var(--bg);
     color:var(--text);
     font-family:var(--mono);
   }
 
-  /* ── Slide screens: two full-height sections, browser-native scroll-snap
-     drives the animation (wheel, trackpad, AND touch swipe all work for
-     free — no JS wheel-event hijacking needed, which notably never fires
-     for touch scrolling on mobile in the first place). ──────────────── */
+  /* ── Slide track: two full-height screens, JS drives the transform (see
+     demo.js) with an explicit multi-second transition. Wheel AND touch
+     swipe both call the same goToSlide() — wheel events never fire for
+     touch scrolling, so relying on `wheel` alone would silently break
+     navigation on mobile. ─────────────────────────────────────────── */
+  #slideTrack{
+    width:100%;
+    height:200vh;
+    transition: transform 1.2s cubic-bezier(.65,0,.35,1);
+    will-change: transform;
+  }
   .slide-screen{
     width:100%;
     height:100vh;
-    scroll-snap-align:start;
-    scroll-snap-stop:always;
     display:flex;
     flex-direction:column;
     align-items:center;
@@ -445,6 +450,7 @@
 </head>
 <body>
 
+<div id="slideTrack">
   <section class="slide-screen hero" id="hero">
     <div class="hero-inner" id="heroInner"></div>
     <button class="scroll-cue" id="scrollCue" type="button">
@@ -485,8 +491,8 @@
   </div>
 
   </section>
+</div>
 
-<script src="demo.js?v=2"></script>
+<script src="demo.js?v=3"></script>
 </body>
 </html>
-

@@ -37,35 +37,16 @@
       hintOpen: "Type {vns} and press {Enter} to open the menu",
       hintHistory: "{↑}/{↓} command history",
       resetBtn: "↺ reset",
-      resetConfirm: "Reset the demo completely? The program will be \"uninstalled\" — all fake traffic and settings will be lost.",
+      resetConfirm: "Reset the demo? All fake traffic, watched ports, and settings will be cleared, and it'll return to the default state (v4.4.3).",
       welcome: "Welcome to the vps-net-stat demo.",
-      notInstalled: "The program isn't \"installed\" in this session yet.",
-      typeInstall: "Type:  install.sh",
       alreadyInstalled: "vps-net-stat is already \"installed\" — as if you came back to your own server.",
       typeVns: "Type:  vns",
       helpHint: "Hint: help — list of available demo commands.",
-      bashNotFound: (c) => `bash: ${c}: command not found`,
-      vnsNotFound: [
-        "bash: vns: command not found",
-        "vps-net-stat is not installed. Run:",
-      ],
-      installCmdHint: "curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/install.sh | sudo bash",
       helpTitle: "Available demo commands:",
       helpVns: "open the interactive menu",
       helpClear: "clear the screen",
       helpHelp: "this help text",
-      helpInstall: "install vps-net-stat (demo)",
       unknownCmd: (c) => `bash: ${c}: command not found. Type help.`,
-      installing: [
-        "→ Checking dependencies…",
-        "✓ Checking dependencies…",
-        "→ Downloading files from GitHub…",
-        "✓ Downloading files from GitHub…",
-        "→ Installing systemd service…",
-        "✓ Installing systemd service…",
-      ],
-      installDone: (v) => `✓ vps-net-stat installed successfully! (version ${v})`,
-      installHint: "Type vns to open the menu.",
       menuTitle: "vps-net-stat — VPS Network Monitor",
       version: "Version:",
       newVersion: "🟢 New version available:",
@@ -190,8 +171,7 @@
       restarted: "✓ Service restarted.",
       uninstallConfirm: "Uninstall vps-net-stat? [y/N]: ",
       uninstalled: "Program uninstalled.",
-      uninstalledDbNote: "Database was not preserved (demo mode).",
-      reinstallHint: "To start over — type install.sh or click \"↺ reset\".",
+      uninstallResetNote: "Session reset to a fresh install (v4.4.3) — type vns to open the menu again.",
       langSwitched: "Language switched.",
     },
     ru: {
@@ -210,35 +190,16 @@
       hintOpen: "Введите {vns} и нажмите {Enter}, чтобы открыть меню",
       hintHistory: "{↑}/{↓} история команд",
       resetBtn: "↺ сброс",
-      resetConfirm: "Полностью сбросить демо? Программа будет «удалена» — весь фейковый трафик и настройки будут потеряны.",
+      resetConfirm: "Сбросить демо? Весь фейковый трафик, отслеживаемые порты и настройки будут очищены, демо вернётся к состоянию по умолчанию (v4.4.3).",
       welcome: "Добро пожаловать в демо vps-net-stat.",
-      notInstalled: "Программа пока не установлена в этой сессии.",
-      typeInstall: "Наберите:  install.sh",
       alreadyInstalled: "vps-net-stat уже «установлен» — как будто вы вернулись на свой сервер.",
       typeVns: "Наберите:  vns",
       helpHint: "Подсказка: help — список доступных демо-команд.",
-      bashNotFound: (c) => `bash: ${c}: команда не найдена`,
-      vnsNotFound: [
-        "bash: vns: команда не найдена",
-        "vps-net-stat не установлен. Запустите:",
-      ],
-      installCmdHint: "curl -fsSL https://raw.githubusercontent.com/WowCatQwerty/vps-net-stat/main/install.sh | sudo bash",
       helpTitle: "Доступные команды демо:",
       helpVns: "открыть интерактивное меню",
       helpClear: "очистить экран",
       helpHelp: "эта справка",
-      helpInstall: "установить vps-net-stat (демо)",
       unknownCmd: (c) => `bash: ${c}: команда не найдена. Наберите help.`,
-      installing: [
-        "→ Проверяю зависимости…",
-        "✓ Проверяю зависимости…",
-        "→ Скачиваю файлы из GitHub…",
-        "✓ Скачиваю файлы из GitHub…",
-        "→ Устанавливаю systemd-сервис…",
-        "✓ Устанавливаю systemd-сервис…",
-      ],
-      installDone: (v) => `✓ vps-net-stat успешно установлен! (версия ${v})`,
-      installHint: "Наберите vns, чтобы открыть меню.",
       menuTitle: "vps-net-stat — Мониторинг сети VPS",
       version: "Версия:",
       newVersion: "🟢 Доступна новая версия:",
@@ -363,13 +324,12 @@
       restarted: "✓ Сервис перезапущен.",
       uninstallConfirm: "Удалить vps-net-stat? [y/N]: ",
       uninstalled: "Программа удалена.",
-      uninstalledDbNote: "База данных сохранена не была (демо-режим).",
-      reinstallHint: "Чтобы начать заново — введите install.sh или нажмите «↺ сброс».",
+      uninstallResetNote: "Сессия сброшена к свежей установке (v4.4.3) — наберите vns, чтобы снова открыть меню.",
       langSwitched: "Язык переключён.",
     },
   };
 
-  function T(){ return STRINGS[state ? state.lang : "en"]; }
+  function T(){ return STRINGS[state.lang]; }
 
   // ── Formatting helpers ──────────────────────────────────────────────────
   const UNITS = [[1024**4,"TiB"],[1024**3,"GiB"],[1024**2,"MiB"],[1024,"KiB"],[1,"B"]];
@@ -428,7 +388,7 @@
         {proto:"tcp", port:443, process:"nginx"},
         {proto:"tcp", port:3000,process:"node"},
       ],
-      shellHistory: [],   // only top-level shell commands (vns, clear, help, install.sh)
+      shellHistory: [],   // only top-level shell commands (vns, clear, help)
     };
   }
 
@@ -437,15 +397,14 @@
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (!raw) return freshState(currentUiLang()); // fresh visit — program is "pre-installed"
       const parsed = JSON.parse(raw);
-      if (!parsed || !parsed.installed) return null; // explicitly "uninstalled" via menu [16] or reset
+      if (!parsed || !parsed.installed) return freshState(currentUiLang());
       if (!parsed.shellHistory) parsed.shellHistory = [];
       return parsed;
     }catch(e){
       return freshState(currentUiLang());
     }
   }
-  function saveState(){ if (state) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  function wipeState(){ sessionStorage.removeItem(STORAGE_KEY); }
+  function saveState(){ sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
   let state = loadState();
 
@@ -835,38 +794,17 @@
 
   function actionUninstall(){
     const t = T();
+    const lang = state.lang;
     blank();
     outRaw("  " + t.uninstalled, "err");
-    outRaw("  " + t.uninstalledDbNote, "faint");
-    wipeState();
-    state = null;
-    blank();
-    outRaw("  " + t.reinstallHint, "faint");
-  }
-
-  // ── Install flow (state === null) ───────────────────────────────────────
-  async function runInstall(){
-    const langForInstall = currentUiLang();
-    state = freshState(langForInstall);
+    state = freshState(lang);
     saveState();
-    const t = T();
     blank();
-    setInputEnabled(false);
-    for (const step of t.installing){
-      const isOk = step.startsWith("✓");
-      await sleep(rndInt(350, 650));
-      outRaw("  " + step, isOk ? "ok" : "dim");
-      scrollBottom();
-    }
-    blank();
-    out(`  <span class="ok">${esc(t.installDone(state.version))}</span>`);
-    blank();
-    outRaw("  " + t.installHint, "faint");
-    setInputEnabled(true);
+    outRaw("  " + t.uninstallResetNote, "faint");
   }
 
-  // Remembers last chosen UI language even across an uninstall, so a
-  // fresh install keeps speaking the language the visitor picked.
+  // Remembers last chosen UI language even across a reset, so a fresh
+  // session keeps speaking the language the visitor picked before.
   function currentUiLang(){
     try {
       return localStorage.getItem("vns_demo_lang_pref") || "en";
@@ -893,7 +831,7 @@
       // Browsers drop focus automatically when an input becomes disabled
       // and don't restore it when re-enabled — so we do it ourselves,
       // otherwise Enter silently stops working until the user clicks back in.
-      if (v) activeInput.focus();
+      if (v) activeInput.focus({ preventScroll: true });
     }
   }
   function currentInput(){ return activeInput; }
@@ -1093,64 +1031,32 @@
     const t = T();
     const trimmed = raw.trim();
     if (!trimmed) return;
-    const parts = trimmed.split(/\s+/);
-    const cmd = parts[0];
-
-    if (state === null){
-      if (/install\.sh/.test(trimmed) || trimmed === "install"){
-        mode = "await:installing";
-        runInstall().then(() => { mode = "shell"; });
-        return;
-      }
-      if (cmd === "vns"){
-        blank();
-        T_noState().vnsNotFound.forEach(l => outRaw("  " + l, "err"));
-        outRaw("  " + T_noState().installCmdHint, "accent");
-        return;
-      }
-      if (cmd === "help" || cmd === "clear"){
-        // fall through
-      } else {
-        blank();
-        out("  " + esc(T_noState().bashNotFound(cmd)), "err");
-        return;
-      }
-    }
+    const cmd = trimmed.split(/\s+/)[0];
 
     switch(cmd){
       case "vns":
-        if (state) enterMenu();
+        enterMenu();
         return;
       case "clear":
         clearScreen();
         return;
-      case "help": {
-        const tt = state ? t : T_noState();
+      case "help":
         blank();
-        outRaw("  " + tt.helpTitle, "dim");
-        out(`  <b>vns</b>            — ${esc(tt.helpVns)}`);
-        out(`  <b>clear</b>          — ${esc(tt.helpClear)}`);
-        out(`  <b>help</b>           — ${esc(tt.helpHelp)}`);
-        if (state === null){
-          out(`  <b>install.sh</b>     — ${esc(tt.helpInstall)}`);
-        }
+        outRaw("  " + t.helpTitle, "dim");
+        out(`  <b>vns</b>            — ${esc(t.helpVns)}`);
+        out(`  <b>clear</b>          — ${esc(t.helpClear)}`);
+        out(`  <b>help</b>           — ${esc(t.helpHelp)}`);
         return;
-      }
       default:
         blank();
-        out("  " + esc((state ? t : T_noState()).unknownCmd(cmd)), "err");
+        out("  " + esc(t.unknownCmd(cmd)), "err");
         return;
     }
   }
 
-  // English fallback strings used when state is null (not installed yet) —
-  // we still respect the visitor's last chosen UI language if we have one.
-  function T_noState(){ return STRINGS[currentUiLang()]; }
-
   // ── Input routing ────────────────────────────────────────────────────────
   function handleLine(raw){
-    const sigil = state === null ? "$" : "root@demo-vps:~#";
-    out(`<span class="accent">${sigil}</span> ${esc(raw)}`, null);
+    out(`<span class="accent">root@demo-vps:~#</span> ${esc(raw)}`, null);
     if (mode === "shell") handleShellCommand(raw);
     else if (mode === "menu") handleMenuChoice(raw);
     else handleAwait(raw);
@@ -1159,7 +1065,7 @@
 
   // ── Static (non-terminal) i18n: header, hint bar, buttons ──────────────
   function renderHero(){
-    const t = state ? T() : T_noState();
+    const t = T();
     const badgesHtml = t.heroBadges.map((b, i) =>
       `<span class="hero-badge${i === 0 ? ' accent-badge' : ''}">${esc(b)}</span>`
     ).join("");
@@ -1203,10 +1109,10 @@
   }
 
   function applyStaticI18n(){
-    const t = state ? T() : T_noState();
-    document.documentElement.lang = (state ? state.lang : currentUiLang());
+    const t = T();
+    document.documentElement.lang = state.lang;
     $brandTag.textContent = t.brandTag;
-    $langBtn.textContent = (state ? state.lang : currentUiLang()) === "ru" ? "EN" : "RU";
+    $langBtn.textContent = state.lang === "ru" ? "EN" : "RU";
     $langBtn.title = "Switch language";
     $resetBtn.textContent = t.resetBtn;
     $hint.innerHTML =
@@ -1218,16 +1124,11 @@
   // ── Boot / welcome ──────────────────────────────────────────────────────
   function boot(){
     applyStaticI18n();
-    const t = state ? T() : T_noState();
+    const t = T();
     outRaw("  " + t.welcome, "dim");
     blank();
-    if (state === null){
-      outRaw("  " + t.notInstalled, "warn");
-      outRaw("  " + t.typeInstall, "accent");
-    } else {
-      outRaw("  " + t.alreadyInstalled, "dim");
-      outRaw("  " + t.typeVns, "accent");
-    }
+    outRaw("  " + t.alreadyInstalled, "dim");
+    outRaw("  " + t.typeVns, "accent");
     blank();
     outRaw("  " + t.helpHint, "faint");
     scrollBottom();
@@ -1239,7 +1140,7 @@
     row.className = "prompt-row";
     const sigil = document.createElement("span");
     sigil.className = "prompt-sigil";
-    sigil.textContent = state === null ? "$" : "root@demo-vps:~#";
+    sigil.textContent = "root@demo-vps:~#";
     const input = document.createElement("input");
     input.className = "prompt-input";
     input.type = "text";
@@ -1252,11 +1153,16 @@
     row.appendChild(input);
     $body.appendChild(row);
     activeInput = input;
-    input.focus();
+    // preventScroll is essential here: this input lives inside the second
+    // full-screen slide (the terminal). Without it, focusing an off-screen
+    // element makes the browser auto-scroll the whole page to reveal it —
+    // which is exactly what was causing the page to load already jumped
+    // to the terminal instead of the hero on first paint.
+    input.focus({ preventScroll: true });
 
     // Command history only tracks top-level shell commands — never menu
     // digits or prompt answers, exactly like a real shell would.
-    let cmdHistory = state ? (state.shellHistory || []) : [];
+    let cmdHistory = state.shellHistory || [];
     let histIdx = cmdHistory.length;
 
     input.addEventListener("keydown", (e) => {
@@ -1266,7 +1172,7 @@
         const wasShellMode = mode === "shell";
         row.remove();
         activeInput = null;
-        if (wasShellMode && state && val.trim()){
+        if (wasShellMode && val.trim()){
           state.shellHistory = state.shellHistory || [];
           state.shellHistory.push(val);
           if (state.shellHistory.length > 200) state.shellHistory.shift();
@@ -1291,15 +1197,16 @@
 
   $body.addEventListener("click", () => {
     const input = currentInput();
-    if (input && !input.disabled) input.focus();
+    if (input && !input.disabled) input.focus({ preventScroll: true });
   }, {passive:true});
 
   // ── Language button ──────────────────────────────────────────────────────
   $langBtn.addEventListener("click", () => {
     if (!inputEnabled) return;
-    const newLang = (state ? state.lang : currentUiLang()) === "ru" ? "en" : "ru";
+    const newLang = state.lang === "ru" ? "en" : "ru";
+    state.lang = newLang;
     rememberUiLang(newLang);
-    if (state){ state.lang = newLang; saveState(); }
+    saveState();
     applyStaticI18n();
     clearScreen();
     mode = "shell";
@@ -1308,54 +1215,126 @@
   });
 
   // ── Reset button ──────────────────────────────────────────────────────────
+  // Always returns to the same fresh v4.4.3 baseline — same outcome as
+  // closing the tab (sessionStorage clears) or using menu item [16]
+  // Uninstall. There is no "not installed" limbo state in this demo.
   $resetBtn.addEventListener("click", () => {
-    if (!inputEnabled) return; // don't allow resetting mid-install/update/restart
-    const t = state ? T() : T_noState();
+    if (!inputEnabled) return; // don't allow resetting mid-update/restart
+    const t = T();
     if (!confirm(t.resetConfirm)) return;
-    const lang = state ? state.lang : currentUiLang();
-    rememberUiLang(lang);
-    wipeState();
-    state = null;
+    const lang = state.lang;
+    state = freshState(lang);
+    saveState();
     clearScreen();
     mode = "shell";
     boot();
     buildInputRow();
   });
 
-  // ── Slide navigation (hero ⇄ demo terminal) ─────────────────────────────
-  // The actual sliding/snapping animation is handled entirely by the browser
-  // via CSS scroll-snap (see .slide-screen rules in index.html) — it works
-  // natively for wheel, trackpad, AND touch swipe, and correctly lets the
-  // terminal's own internal scroll take priority until its content is fully
-  // read, before handing off to the page-level snap. No JS is needed for
-  // any of that. We only need a couple of lines for the two explicit
-  // "jump to demo" buttons, and for direct #demo deep links on load.
-  function scrollToDemo(){
-    const demoEl = document.getElementById("demo");
-    if (demoEl && demoEl.scrollIntoView){
-      demoEl.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+  // ── Fullscreen slide (hero ⇄ demo terminal) ─────────────────────────────
+  // A deliberate, JS-driven multi-second glide — the browser's own smooth
+  // scroll / scroll-snap correction is too short and not tunable to last
+  // "a couple of seconds", so we drive #slideTrack's transform ourselves
+  // with an explicit CSS transition. Wheel (desktop) and touch swipe
+  // (mobile) both call the same goToSlide() so the experience is
+  // consistent everywhere — importantly, `wheel` events never fire for
+  // touch scrolling at all, so touch needs its own gesture handling.
+  // While the cursor/finger is over the terminal output and there's still
+  // unread content to scroll through, that inner scroll takes priority —
+  // the slide only reacts once it's at the edge.
+  const $slideTrack = document.getElementById("slideTrack");
+  let currentSlide = 0; // 0 = hero, 1 = demo
+  let slideAnimating = false;
+  const SLIDE_COUNT = 2;
+  const SLIDE_ANIM_MS = 1200; // keep in sync with the CSS transition duration on #slideTrack
+
+  // Explicit starting value before any interaction — some browsers won't
+  // smoothly interpolate the very first change to a property that never
+  // had an inline value, treating it as part of initial layout rather
+  // than a transition.
+  $slideTrack.style.transform = "translateY(0px)";
+
+  function goToSlide(index){
+    index = Math.max(0, Math.min(SLIDE_COUNT - 1, index));
+    if (index === currentSlide) return;
+    currentSlide = index;
+    slideAnimating = true;
+    $slideTrack.style.transform = `translateY(-${currentSlide * 100}vh)`;
+    setTimeout(() => { slideAnimating = false; }, SLIDE_ANIM_MS);
   }
-  document.getElementById("scrollCue").addEventListener("click", scrollToDemo);
+
+  function isScrollableAtEdge(el, deltaY){
+    // True if el has no more room to scroll in the given direction —
+    // meaning the page-level slide should take over instead of the element.
+    if (!el) return true;
+    const atTop = el.scrollTop <= 0;
+    const atBottom = Math.ceil(el.scrollTop + el.clientHeight) >= el.scrollHeight;
+    if (deltaY < 0) return atTop;
+    if (deltaY > 0) return atBottom;
+    return true;
+  }
+
+  function findScrollableAncestor(target){
+    if (!target || !target.closest) return null;
+    return target.closest(".term-body") || target.closest(".hero") || null;
+  }
+
+  window.addEventListener("wheel", (e) => {
+    if (slideAnimating){ e.preventDefault(); return; }
+    const scrollable = findScrollableAncestor(e.target);
+    if (scrollable && !isScrollableAtEdge(scrollable, e.deltaY)) return; // let it scroll natively
+    e.preventDefault();
+    if (e.deltaY > 10) goToSlide(currentSlide + 1);
+    else if (e.deltaY < -10) goToSlide(currentSlide - 1);
+  }, { passive: false });
+
+  // Touch swipe — kept passive throughout (native scroll inside the
+  // terminal is never blocked mid-gesture); we only decide whether to
+  // ALSO trigger a slide change once the gesture ends, based on the net
+  // direction and whether the touch started at a scrollable edge.
+  let touchStartY = null;
+  let touchStartScrollable = null;
+
+  window.addEventListener("touchstart", (e) => {
+    if (slideAnimating || !e.touches.length) return;
+    touchStartY = e.touches[0].clientY;
+    touchStartScrollable = findScrollableAncestor(e.target);
+  }, { passive: true });
+
+  window.addEventListener("touchend", (e) => {
+    if (slideAnimating || touchStartY === null || !e.changedTouches.length) return;
+    const deltaY = touchStartY - e.changedTouches[0].clientY; // >0 = swiped up
+    touchStartY = null;
+    if (Math.abs(deltaY) < 50) return; // too small to count as a deliberate swipe
+    if (touchStartScrollable && !isScrollableAtEdge(touchStartScrollable, deltaY)) return;
+    if (deltaY > 0) goToSlide(currentSlide + 1);
+    else goToSlide(currentSlide - 1);
+  }, { passive: true });
+
+  function scrollToDemoSlide(){ goToSlide(1); }
+  document.getElementById("scrollCue").addEventListener("click", scrollToDemoSlide);
   // The "Try the live demo" button lives inside #heroInner, which is fully
   // re-rendered on every renderHero() call (boot + language switch), so a
   // direct listener on the button would be lost on re-render. Delegating
   // from the stable #heroInner parent survives that.
   $heroInner.addEventListener("click", (e) => {
-    if (e.target.closest("#scrollToDemoBtn")) scrollToDemo();
+    if (e.target.closest("#scrollToDemoBtn")) scrollToDemoSlide();
   });
 
   // ── Start ────────────────────────────────────────────────────────────────
   boot();
   buildInputRow();
 
-  // If the visitor arrived via a direct #demo link, jump straight there
-  // without the snap animation (jarring on first paint). The explicit
-  // {behavior:"instant"} option overrides the CSS scroll-behavior:smooth
-  // for this one programmatic call, per spec.
+  // If the visitor arrived via a direct #demo link, show that slide
+  // immediately without the glide animation (jarring on first paint).
   if (window.__wantsDemoSlide){
-    const demoEl = document.getElementById("demo");
-    if (demoEl) demoEl.scrollIntoView({ behavior: "instant", block: "start" });
+    currentSlide = 1;
+    $slideTrack.style.transition = "none";
+    $slideTrack.style.transform = "translateY(-100vh)";
+    // Restore the normal transition for subsequent user-triggered slides.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => { $slideTrack.style.transition = ""; });
+    });
   }
 
 })();
