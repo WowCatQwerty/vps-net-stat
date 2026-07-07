@@ -1246,7 +1246,14 @@
   let currentSlide = 0; // 0 = hero, 1 = demo
   let slideAnimating = false;
   const SLIDE_COUNT = 2;
-  const SLIDE_ANIM_MS = 1200; // keep in sync with the CSS transition duration on #slideTrack
+  const SLIDE_ANIM_MS = 2000; // keep in sync with the CSS transition duration on #slideTrack
+  // Trackpads and "free-spin" mice keep sending momentum/inertia wheel
+  // events for a few hundred ms after the physical gesture actually ends.
+  // If that tail arrives after slideAnimating has already reset, a stray
+  // late event (sometimes with a flipped sign as the momentum settles)
+  // can yank the page to the next/previous slide well after it has
+  // already glided into place — this extra buffer swallows that tail.
+  const WHEEL_COOLDOWN_MS = SLIDE_ANIM_MS + 700;
 
   // Explicit starting value before any interaction — some browsers won't
   // smoothly interpolate the very first change to a property that never
@@ -1260,7 +1267,7 @@
     currentSlide = index;
     slideAnimating = true;
     $slideTrack.style.transform = `translateY(-${currentSlide * 100}vh)`;
-    setTimeout(() => { slideAnimating = false; }, SLIDE_ANIM_MS);
+    setTimeout(() => { slideAnimating = false; }, WHEEL_COOLDOWN_MS);
   }
 
   function isScrollableAtEdge(el, deltaY){
