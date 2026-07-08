@@ -1266,6 +1266,11 @@
     if (index === currentSlide) return;
     currentSlide = index;
     slideAnimating = true;
+    // Defensive: explicitly guarantee the CSS transition is active before
+    // every single slide change, regardless of what else might have
+    // touched this element's inline style. Cheap and removes an entire
+    // category of "transition silently got disabled somewhere" bugs.
+    $slideTrack.style.transition = "";
     $slideTrack.style.transform = `translateY(-${currentSlide * 100}vh)`;
     setTimeout(() => { slideAnimating = false; }, WHEEL_COOLDOWN_MS);
   }
@@ -1331,17 +1336,5 @@
   // ── Start ────────────────────────────────────────────────────────────────
   boot();
   buildInputRow();
-
-  // If the visitor arrived via a direct #demo link, show that slide
-  // immediately without the glide animation (jarring on first paint).
-  if (window.__wantsDemoSlide){
-    currentSlide = 1;
-    $slideTrack.style.transition = "none";
-    $slideTrack.style.transform = "translateY(-100vh)";
-    // Restore the normal transition for subsequent user-triggered slides.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => { $slideTrack.style.transition = ""; });
-    });
-  }
 
 })();

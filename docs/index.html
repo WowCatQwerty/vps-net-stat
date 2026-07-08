@@ -8,9 +8,14 @@
   // since that can't be made to last a couple of seconds). We strip any
   // #hash from the URL immediately, before layout, so a stale #demo from a
   // previous visit or a shared link doesn't cause the browser to
-  // auto-scroll before demo.js has even run; demo.js reads
-  // window.__wantsDemoSlide to jump straight to the demo slide instead.
-  window.__wantsDemoSlide = location.hash === "#demo";
+  // auto-scroll before demo.js has even run. The page always loads on the
+  // hero slide — no special-cased "jump straight to #demo" behavior, since
+  // that required briefly disabling the CSS transition and relying on
+  // requestAnimationFrame to re-enable it, and rAF is paused by browsers
+  // in backgrounded/inactive tabs — if the tab wasn't focused at exactly
+  // the right moment, the transition could stay disabled for the rest of
+  // the session, making every later slide change look instant regardless
+  // of how it was triggered. Simpler and more robust to just not do that.
   if (location.hash){
     history.replaceState(null, "", location.pathname + location.search);
   }
@@ -493,6 +498,6 @@
   </section>
 </div>
 
-<script src="demo.js?v=5"></script>
+<script src="demo.js?v=6"></script>
 </body>
 </html>
