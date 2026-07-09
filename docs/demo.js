@@ -1246,7 +1246,7 @@
   let currentSlide = 0; // 0 = hero, 1 = demo
   let slideAnimating = false;
   const SLIDE_COUNT = 2;
-  const SLIDE_ANIM_MS = 2000; // keep in sync with the CSS transition duration on #slideTrack
+  const SLIDE_ANIM_MS = 1700; // keep in sync with the CSS transition duration on #slideTrack
   // Trackpads and "free-spin" mice keep sending momentum/inertia wheel
   // events for a few hundred ms after the physical gesture actually ends.
   // If that tail arrives after slideAnimating has already reset, a stray
