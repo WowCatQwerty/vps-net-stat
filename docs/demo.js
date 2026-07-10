@@ -18,6 +18,7 @@
   const $resetBtn = document.getElementById("resetBtn");
   const $heroInner = document.getElementById("heroInner");
   const $scrollCueText = document.getElementById("scrollCueText");
+  const $heroLangBtn = document.getElementById("heroLangBtn");
 
   // ── i18n ────────────────────────────────────────────────────────────────
   const STRINGS = {
@@ -1114,6 +1115,8 @@
     $brandTag.textContent = t.brandTag;
     $langBtn.textContent = state.lang === "ru" ? "EN" : "RU";
     $langBtn.title = "Switch language";
+    $heroLangBtn.textContent = state.lang === "ru" ? "EN" : "RU";
+    $heroLangBtn.title = "Switch language";
     $resetBtn.textContent = t.resetBtn;
     $hint.innerHTML =
       `<span>${t.hintOpen.replace("{vns}","<kbd>vns</kbd>").replace("{Enter}","<kbd>Enter</kbd>")}</span>` +
@@ -1201,7 +1204,7 @@
   }, {passive:true});
 
   // ── Language button ──────────────────────────────────────────────────────
-  $langBtn.addEventListener("click", () => {
+  function switchLanguage(){
     if (!inputEnabled) return;
     const newLang = state.lang === "ru" ? "en" : "ru";
     state.lang = newLang;
@@ -1212,7 +1215,9 @@
     mode = "shell";
     boot();
     buildInputRow();
-  });
+  }
+  $langBtn.addEventListener("click", switchLanguage);
+  $heroLangBtn.addEventListener("click", switchLanguage);
 
   // ── Reset button ──────────────────────────────────────────────────────────
   // Always returns to the same fresh v4.4.3 baseline — same outcome as
