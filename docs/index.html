@@ -494,16 +494,17 @@
   .bar-fill-r{ color:var(--err); }
 
   @media (max-width:600px){
-    .demo-section{ padding-top:36px; }
+    .demo-section{ padding-top:36px; padding-bottom:16px; }
     .term-body{
       height:calc(100vh - 190px);
       height:calc(100dvh - 190px);
-      min-height:320px;
+      min-height:280px;
       padding:16px 14px;
       font-size:12.6px;
     }
     .term-titlebar{ padding:10px 12px; }
     .brand-name{ font-size:15px; }
+    .term-hint{ justify-content:center; text-align:center; }
   }
 </style>
 </head>
@@ -552,6 +553,6 @@
   </section>
 </div>
 
-<script src="demo.js?v=9"></script>
+<script src="demo.js?v=10"></script>
 </body>
 </html>

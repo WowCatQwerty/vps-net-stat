@@ -1138,7 +1138,7 @@
   }
 
   // ── Input row (manually drawn on top of the output stream) ─────────────
-  function buildInputRow(){
+  function buildInputRow(autofocus = true){
     const row = document.createElement("div");
     row.className = "prompt-row";
     const sigil = document.createElement("span");
@@ -1161,7 +1161,11 @@
     // element makes the browser auto-scroll the whole page to reveal it —
     // which is exactly what was causing the page to load already jumped
     // to the terminal instead of the hero on first paint.
-    input.focus({ preventScroll: true });
+    // autofocus is skipped when this row is rebuilt as a side effect of a
+    // button press (language toggle, reset) rather than the person actually
+    // typing — focusing a text input pops the on-screen keyboard on mobile,
+    // which is jarring when all they did was tap a small UI button.
+    if (autofocus) input.focus({ preventScroll: true });
 
     // Command history only tracks top-level shell commands — never menu
     // digits or prompt answers, exactly like a real shell would.
@@ -1214,7 +1218,7 @@
     clearScreen();
     mode = "shell";
     boot();
-    buildInputRow();
+    buildInputRow(false);
   }
   $langBtn.addEventListener("click", switchLanguage);
 
@@ -1232,7 +1236,7 @@
     clearScreen();
     mode = "shell";
     boot();
-    buildInputRow();
+    buildInputRow(false);
   });
 
   // ── Fullscreen slide (hero ⇄ demo terminal) ─────────────────────────────
