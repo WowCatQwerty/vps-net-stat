@@ -18,7 +18,6 @@
   const $resetBtn = document.getElementById("resetBtn");
   const $heroInner = document.getElementById("heroInner");
   const $scrollCueText = document.getElementById("scrollCueText");
-  const $heroLangBtn = document.getElementById("heroLangBtn");
 
   // ── i18n ────────────────────────────────────────────────────────────────
   const STRINGS = {
@@ -1075,7 +1074,10 @@
       <div class="hero-mark">
         <svg viewBox="0 0 100 100" fill="none"><path d="M20 65 L38 35 L52 55 L65 30 L80 60" stroke="#4a9eff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
-      <h1 class="hero-title">vps-net-stat</h1>
+      <div class="hero-title-row">
+        <h1 class="hero-title">vps-net-stat</h1>
+        <button class="hero-lang-btn" id="heroLangBtn" type="button">${state.lang === "ru" ? "EN" : "RU"}</button>
+      </div>
       <p class="hero-tagline">${t.heroTagline}</p>
       <div class="hero-badges">${badgesHtml}</div>
       <div class="hero-features">
@@ -1115,8 +1117,6 @@
     $brandTag.textContent = t.brandTag;
     $langBtn.textContent = state.lang === "ru" ? "EN" : "RU";
     $langBtn.title = "Switch language";
-    $heroLangBtn.textContent = state.lang === "ru" ? "EN" : "RU";
-    $heroLangBtn.title = "Switch language";
     $resetBtn.textContent = t.resetBtn;
     $hint.innerHTML =
       `<span>${t.hintOpen.replace("{vns}","<kbd>vns</kbd>").replace("{Enter}","<kbd>Enter</kbd>")}</span>` +
@@ -1217,7 +1217,6 @@
     buildInputRow();
   }
   $langBtn.addEventListener("click", switchLanguage);
-  $heroLangBtn.addEventListener("click", switchLanguage);
 
   // ── Reset button ──────────────────────────────────────────────────────────
   // Always returns to the same fresh v4.4.3 baseline — same outcome as
@@ -1248,6 +1247,8 @@
   // unread content to scroll through, that inner scroll takes priority —
   // the slide only reacts once it's at the edge.
   const $slideTrack = document.getElementById("slideTrack");
+  const $heroEl = document.getElementById("hero");
+  const $demoEl = document.getElementById("demo");
   let currentSlide = 0; // 0 = hero, 1 = demo
   let slideAnimating = false;
   const SLIDE_COUNT = 2;
@@ -1277,6 +1278,13 @@
     // category of "transition silently got disabled somewhere" bugs.
     $slideTrack.style.transition = "";
     $slideTrack.style.transform = `translateY(-${currentSlide * 100}vh)`;
+    // Reset the internal scroll of the slide we're arriving at, so its
+    // header/top is always visible on arrival — otherwise if the person
+    // had scrolled the terminal output down (or scrolled the hero on a
+    // short viewport) before leaving, coming back would silently resume
+    // mid-scroll instead of showing the top of the slide.
+    const $target = currentSlide === 1 ? $demoEl : $heroEl;
+    if ($target) $target.scrollTop = 0;
     setTimeout(() => { slideAnimating = false; }, WHEEL_COOLDOWN_MS);
   }
 
@@ -1336,6 +1344,7 @@
   // from the stable #heroInner parent survives that.
   $heroInner.addEventListener("click", (e) => {
     if (e.target.closest("#scrollToDemoBtn")) scrollToDemoSlide();
+    if (e.target.closest("#heroLangBtn")) switchLanguage();
   });
 
   // ── Start ────────────────────────────────────────────────────────────────
