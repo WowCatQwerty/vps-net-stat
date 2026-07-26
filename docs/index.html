@@ -323,23 +323,26 @@
 
   /* ── Demo section (second screen) ──────────────────────── */
   .demo-section{
-    padding:20px 16px 40px;
-    overflow-y:auto; /* on small screens, the header+terminal stack can exceed 100vh */
-    /* Overrides .slide-screen's justify-content:center: when the header +
-       terminal card together are taller than the viewport, centering would
-       push the header (brand name + GitHub link) above the visible area,
-       leaving only the terminal card on screen and the header reachable
-       only via scrolling up — easy to miss entirely. Aligning to the start
-       keeps the header always visible at the top, with the terminal
-       scrolling below it if needed. */
+    padding:20px 16px 20px;
+    /* Flex column that fills exactly 100dvh (inherited from .slide-screen)
+       with no overflow: .page-head keeps its natural height and .term-wrap
+       stretches to fill whatever is left (flex:1 + min-height:0, so it can
+       shrink below its content's natural size instead of overflowing).
+       This guarantees the header is always visible at a fixed position at
+       the top and the terminal card never pushes the section taller than
+       the viewport — no scrollbar on the section itself, on any screen
+       size, because the layout can no longer exceed 100dvh in the first
+       place. */
     justify-content:flex-start;
+    overflow:hidden;
   }
 
   /* ── Header ─────────────────────────────────────────── */
   .page-head{
     width:100%;
     max-width:900px;
-    margin-bottom:28px;
+    margin-bottom:20px;
+    flex-shrink:0;
   }
   .brand-row{
     display:flex;
@@ -379,6 +382,11 @@
   .term-wrap{
     width:100%;
     max-width:900px;
+    /* Fills whatever height .page-head didn't use, within the fixed
+       100dvh of .demo-section — see the comment on .demo-section above. */
+    flex:1;
+    min-height:0;
+    display:flex;
   }
   .term-card{
     background:var(--panel);
@@ -389,6 +397,10 @@
       0 0 0 1px rgba(255,255,255,.02) inset,
       0 30px 60px -25px rgba(0,0,0,.7),
       0 0 80px -40px var(--accent-glow);
+    display:flex;
+    flex-direction:column;
+    width:100%;
+    min-height:0;
   }
   .term-titlebar{
     display:flex;
@@ -397,6 +409,7 @@
     padding:12px 16px;
     background:var(--panel-2);
     border-bottom:1px solid var(--border-soft);
+    flex-shrink:0;
   }
   .term-dots{ display:flex; gap:7px; }
   .term-dots span{ width:11px;height:11px;border-radius:50%; display:block; }
@@ -420,10 +433,13 @@
 
   .term-body{
     padding:16px 18px 14px;
-    height:calc(100vh - 220px);
-    height:calc(100dvh - 220px);
-    min-height:520px;
-    max-height:900px;
+    /* Fills the remaining space inside .term-card (card height comes from
+       .term-wrap's flex:1 within .demo-section) instead of a hardcoded
+       height/min-height — the previous fixed values (e.g. min-height:520px
+       or :380px on mobile) were bigger than some real viewports, which is
+       exactly what forced the whole section to overflow and scroll. */
+    flex:1;
+    min-height:0;
     overflow-y:auto;
     font-size:12px;
     line-height:1.42;
@@ -484,6 +500,7 @@
     justify-content:space-between;
     gap:10px;
     flex-wrap:wrap;
+    flex-shrink:0;
   }
   .term-hint kbd{
     font-family:var(--mono);
@@ -502,11 +519,9 @@
   .bar-fill-r{ color:var(--err); }
 
   @media (max-width:600px){
-    .demo-section{ padding-top:36px; }
+    .demo-section{ padding-top:16px; }
+    .page-head{ margin-bottom:14px; }
     .term-body{
-      height:calc(100vh - 190px);
-      height:calc(100dvh - 190px);
-      min-height:380px;
       padding:16px 14px;
       font-size:12.6px;
     }
