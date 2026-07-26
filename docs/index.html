@@ -325,6 +325,14 @@
   .demo-section{
     padding:20px 16px 40px;
     overflow-y:auto; /* on small screens, the header+terminal stack can exceed 100vh */
+    /* Overrides .slide-screen's justify-content:center: when the header +
+       terminal card together are taller than the viewport, centering would
+       push the header (brand name + GitHub link) above the visible area,
+       leaving only the terminal card on screen and the header reachable
+       only via scrolling up — easy to miss entirely. Aligning to the start
+       keeps the header always visible at the top, with the terminal
+       scrolling below it if needed. */
+    justify-content:flex-start;
   }
 
   /* ── Header ─────────────────────────────────────────── */
@@ -494,17 +502,16 @@
   .bar-fill-r{ color:var(--err); }
 
   @media (max-width:600px){
-    .demo-section{ padding-top:36px; padding-bottom:16px; }
+    .demo-section{ padding-top:36px; }
     .term-body{
       height:calc(100vh - 190px);
       height:calc(100dvh - 190px);
-      min-height:280px;
+      min-height:380px;
       padding:16px 14px;
       font-size:12.6px;
     }
     .term-titlebar{ padding:10px 12px; }
     .brand-name{ font-size:15px; }
-    .term-hint{ justify-content:center; text-align:center; }
   }
 </style>
 </head>
