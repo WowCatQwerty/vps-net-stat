@@ -75,6 +75,13 @@
   #slideTrack{
     width:100%;
     height:200vh;
+    height:200dvh; /* must match .slide-screen's 100dvh × 2 exactly — mixing
+      vh and dvh here made the track's total height disagree with the sum
+      of its two children on mobile browsers (vh assumes the address bar
+      is hidden, dvh tracks what's actually visible), so translateY(-100dvh)
+      landed at a slightly wrong final position: correct mid-animation,
+      offset once the transition settled, clipping the top of the second
+      screen (visible only as a brief flash while sliding past it). */
     transition: transform 1.7s cubic-bezier(.65,0,.35,1);
     will-change: transform;
   }

@@ -1281,7 +1281,7 @@
     // touched this element's inline style. Cheap and removes an entire
     // category of "transition silently got disabled somewhere" bugs.
     $slideTrack.style.transition = "";
-    $slideTrack.style.transform = `translateY(-${currentSlide * 100}vh)`;
+    $slideTrack.style.transform = `translateY(-${currentSlide * 100}dvh)`;
     // Reset the internal scroll of the slide we're arriving at, so its
     // header/top is always visible on arrival — otherwise if the person
     // had scrolled the terminal output down (or scrolled the hero on a
